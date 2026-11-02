@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KitBuilder.App.ViewModels"
+             xmlns:tools="using:KitBuilder.Core.Tools"
+             x:Class="KitBuilder.App.Views.BuildView"
+             x:DataType="vm:BuildViewModel">
+    <DockPanel Margin="8,12">
+        <StackPanel DockPanel.Dock="Top" Spacing="12" MaxWidth="900" HorizontalAlignment="Left">
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="WHERE TO" Classes="section"/>
+
+                    <RadioButton GroupName="target" IsChecked="{Binding ToUsb}" IsEnabled="{Binding CanBuildUsb}"
+                                 Content="USB stick: add the kit to a Windows 11 install USB (made with Microsoft's Media Creation Tool)"/>
+                    <StackPanel Margin="28,0,0,0" Spacing="6" IsVisible="{Binding ToUsb}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ComboBox ItemsSource="{Binding Drives}" SelectedItem="{Binding SelectedDrive}" Width="340"
+                                      PlaceholderText="Plug in a USB stick">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="tools:DriveChoice">
+                                        <TextBlock Text="{Binding Display}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Content="Refresh" Command="{Binding RefreshDrivesCommand}"/>
+                        </StackPanel>
+                        <CheckBox Content="Also list fixed drives (some USB SSDs show up as fixed)" IsChecked="{Binding IncludeFixedDrives}"/>
+                        <TextBlock Classes="hint"
+                                   Text="Copies the kit to the root of the drive. Windows install files and BitLockerKeys\ on it are left alone; kit folders are replaced, so scripts deleted from the kit disappear from the USB too."/>
+                        <TextBlock Text="{Binding RecoveryKeyWarning}" Classes="warning"
+                                   IsVisible="{Binding RecoveryKeyWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+                    <TextBlock Margin="28,0,0,0" Classes="hint" IsVisible="{Binding !CanBuildUsb}"
+                               Text="USB builds need Windows. Here you can build an ISO."/>
+
+                    <RadioButton GroupName="target" IsChecked="{Binding ToIso}"
+                                 Content="ISO file: attach to a VM as a second DVD drive, next to a Windows 11 ISO"/>
+                    <Grid Margin="28,0,0,0" ColumnDefinitions="*,8,Auto" IsVisible="{Binding ToIso}" MaxWidth="700" HorizontalAlignment="Left">
+                        <TextBox Text="{Binding IsoPath}" Classes="mono" MinWidth="480"/>
+                        <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseIsoCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Build" Classes="accent" Padding="22,7" FontSize="13" Command="{Binding BuildCommand}"/>
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBuilding}" Width="200" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Result}" Classes="ok" VerticalAlignment="Center" FontSize="13"
+                           IsVisible="{Binding Succeeded}"/>
+                <TextBlock Text="{Binding Result}" Classes="error" VerticalAlignment="Center" FontSize="13"
+                           IsVisible="{Binding !Succeeded}"/>
+            </StackPanel>
+            <TextBlock Text="BUILD LOG" Classes="section"/>
+        </StackPanel>
+
+        <TextBox Text="{Binding LogText}" Classes="mono" IsReadOnly="True" AcceptsReturn="True"
+                 TextWrapping="NoWrap" VerticalContentAlignment="Top" Margin="0,4,0,0" CaretIndex="{Binding LogText.Length, Mode=OneWay}"/>
+    </DockPanel>
+</UserControl>

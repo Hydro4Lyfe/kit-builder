@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KitBuilder.App.ViewModels"
+             x:Class="KitBuilder.App.Views.ScriptsView"
+             x:DataType="vm:ScriptsViewModel">
+    <Grid ColumnDefinitions="200,*" Margin="0,8,0,0">
+        <!-- Phases, in the order the install runs them. -->
+        <StackPanel Spacing="6" Margin="4,4,10,0">
+            <TextBlock Text="PHASES, IN RUN ORDER" Classes="section" Margin="6,0"/>
+            <ListBox ItemsSource="{Binding Phases}" SelectedItem="{Binding SelectedPhase}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PhaseViewModel">
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Content="Reload" Classes="ghost" Command="{Binding RefreshCommand}" Margin="6,8,0,0"/>
+        </StackPanel>
+
+        <DockPanel Grid.Column="1" DataContext="{Binding SelectedPhase}" x:DataType="vm:PhaseViewModel">
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,8,10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Description}" Classes="hint" FontSize="12"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Show folder" Classes="ghost" VerticalAlignment="Top"
+                            Command="{Binding OpenFolderCommand}"/>
+                </Grid>
+                <TextBlock Classes="hint"
+                           Text="Scripts run top to bottom. Switching one off moves it into the phase's _disabled folder; switching it on moves it back."/>
+            </StackPanel>
+
+            <!-- Add bar -->
+            <Border DockPanel.Dock="Bottom" Classes="card" Margin="0,10,8,8" Padding="10">
+                <Grid ColumnDefinitions="Auto,16,*,8,Auto">
+                    <Button Content="Add file..." Command="{Binding AddFileCommand}"/>
+                    <TextBox Grid.Column="2" Text="{Binding NewRegName}" Watermark="Name for a new .reg file, e.g. Turn off Bing search"/>
+                    <Button Grid.Column="4" Content="New .reg file" Command="{Binding NewRegCommand}"/>
+                </Grid>
+            </Border>
+
+            <TextBlock DockPanel.Dock="Bottom" Classes="error" Margin="0,8,8,0"
+                       Text="{Binding $parent[UserControl].((vm:ScriptsViewModel)DataContext).Error, FallbackValue=''}"/>
+
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Items}" Margin="0,0,8,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ScriptRowViewModel">
+                            <Border Background="{DynamicResource PtCardBg}" BorderBrush="{DynamicResource PtCardBorder}"
+                                    BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,5">
+                                <Grid ColumnDefinitions="Auto,12,*,Auto">
+                                    <ToggleButton Theme="{StaticResource PtSwitch}" IsChecked="{Binding IsOn}"
+                                                  IsEnabled="{Binding CanToggle}" VerticalAlignment="Center"
+                                                  ToolTip.Tip="On: runs during setup. Off: kept in _disabled, skipped."/>
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding FileName}" FontFamily="{DynamicResource PtMono}" FontSize="12.5"/>
+                                        <TextBlock Text="{Binding StateLabel}" Classes="hint"
+                                                   IsVisible="{Binding StateLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
+                                        <Button Content="▲" Classes="ghost" Command="{Binding MoveUpCommand}"
+                                                IsVisible="{Binding CanMove}" ToolTip.Tip="Run earlier"/>
+                                        <Button Content="▼" Classes="ghost" Command="{Binding MoveDownCommand}"
+                                                IsVisible="{Binding CanMove}" ToolTip.Tip="Run later"/>
+                                        <Button Content="Open" Classes="ghost" Command="{Binding OpenCommand}"/>
+                                        <Button Content="Show" Classes="ghost" Command="{Binding RevealCommand}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
+</UserControl>

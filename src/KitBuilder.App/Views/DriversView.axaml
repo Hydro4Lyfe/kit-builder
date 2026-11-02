@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KitBuilder.App.ViewModels"
+             x:Class="KitBuilder.App.Views.DriversView"
+             x:DataType="vm:DriversViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="8,12" Spacing="14" MaxWidth="900" HorizontalAlignment="Left">
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="ADD A MODEL" Classes="section"/>
+                    <TextBlock Classes="hint" FontSize="12"
+                               Text="1. On the new machine (or one like it), run this in PowerShell to get its model names:"/>
+                    <Grid ColumnDefinitions="*,8,Auto">
+                        <TextBox Text="{Binding ModelQueryCommand, Mode=OneWay}" Classes="mono" IsReadOnly="True" TextWrapping="Wrap"/>
+                        <Button Grid.Column="2" Content="Copy" Command="{Binding CopyModelQueryCommand}" VerticalAlignment="Top"/>
+                    </Grid>
+                    <TextBlock Classes="hint" FontSize="12"
+                               Text="2. Name the folder, and list the Model and Version values to match, one per line. * is a wildcard: Lenovo models look like 21HDCTO1WW, so 21HD* covers the type."/>
+                    <Grid ColumnDefinitions="260,10,*,10,Auto">
+                        <TextBox Text="{Binding NewModelName}" Watermark="Folder name, e.g. Dell Latitude 5450" VerticalAlignment="Top"/>
+                        <TextBox Grid.Column="2" Text="{Binding NewModelMatchText}" Classes="mono" AcceptsReturn="True"
+                                 Height="64" Watermark="Latitude 5450"/>
+                        <Button Grid.Column="4" Content="Add model" Classes="accent" VerticalAlignment="Top"
+                                Command="{Binding AddModelCommand}"/>
+                    </Grid>
+                    <TextBlock Classes="hint" FontSize="12"
+                               Text="3. Download the manufacturer's driver pack for that model and import it below."/>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Spacing="2">
+                <TextBlock Text="{Binding Message}" Classes="ok" IsVisible="{Binding !MessageIsError}"/>
+                <TextBlock Text="{Binding Message}" Classes="error" IsVisible="{Binding MessageIsError}"/>
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="240" HorizontalAlignment="Left"/>
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{Binding Folders}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DriverFolderViewModel">
+                        <Border Classes="card" Margin="0,0,0,10">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding KindLabel}" Classes="hint"/>
+                                        <TextBlock Text="{Binding Summary}" Classes="label"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top"
+                                                IsEnabled="{Binding $parent[UserControl].((vm:DriversViewModel)DataContext).IsIdle, FallbackValue=True}">
+                                        <Button Content="Import folder..." Command="{Binding ImportFolderCommand}"/>
+                                        <Button Content="Import .zip/.cab..." Command="{Binding ImportFileCommand}"/>
+                                        <Button Content="Show" Classes="ghost" Command="{Binding OpenCommand}"/>
+                                        <Button Content="Remove" Classes="danger" Command="{Binding RemoveCommand}"
+                                                IsVisible="{Binding IsModel}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel Spacing="4" IsVisible="{Binding IsModel}">
+                                    <TextBlock Text="match.txt (one model name per line, * is a wildcard)" Classes="label"/>
+                                    <Grid ColumnDefinitions="*,8,Auto">
+                                        <TextBox Text="{Binding MatchText}" Classes="mono" AcceptsReturn="True" MinHeight="44"/>
+                                        <Button Grid.Column="2" Content="Save" VerticalAlignment="Top"
+                                                Command="{Binding SaveMatchCommand}" IsEnabled="{Binding MatchChanged}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

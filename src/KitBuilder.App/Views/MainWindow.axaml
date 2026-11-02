@@ -1,0 +1,98 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:KitBuilder.App.ViewModels"
+        x:Class="KitBuilder.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1100" Height="760" MinWidth="860" MinHeight="560"
+        Icon="/Assets/pt-logo.ico"
+        Title="{Binding Title}">
+
+    <DockPanel>
+        <!-- Header: kit path, check status, open another kit. -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource PtBarBg}"
+                BorderBrush="{DynamicResource PtBarBorder}" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Image Source="/Assets/pt-logo.png" Width="26" Height="26"/>
+                    <TextBlock Text="PT Kit Builder" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="22,0" VerticalAlignment="Center" IsVisible="{Binding IsKitOpen}">
+                    <TextBlock Text="{Binding Kit.Root, FallbackValue=''}" Classes="label" TextTrimming="CharacterEllipsis"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding CheckSummary}" Classes="ok" IsVisible="{Binding IsReady}"/>
+                        <TextBlock Text="{Binding CheckSummary}" Classes="error" IsVisible="{Binding HasErrors}"/>
+                        <TextBlock Text="{Binding CheckSummary}" Classes="hint" IsVisible="{Binding IsChecking}"/>
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="2" Content="Show in folder" Classes="ghost" Margin="0,0,6,0"
+                        Command="{Binding OpenKitFolderCommand}" IsVisible="{Binding IsKitOpen}"/>
+                <Button Grid.Column="3" Content="Open kit..." Command="{Binding BrowseForKitCommand}"/>
+            </Grid>
+        </Border>
+
+        <Panel>
+            <!-- Start screen, until a kit is open. -->
+            <StackPanel IsVisible="{Binding !IsKitOpen}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="12" MaxWidth="520">
+                <TextBlock Text="Open a deployment kit" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock Classes="hint" TextAlignment="Center" FontSize="12.5"
+                           Text="Choose the deployment-kit folder: the one with settings.json, Scripts and tools in it. PT Kit Builder edits the files in that folder; nothing is stored anywhere else."/>
+                <Button Content="Open kit folder..." Classes="accent" HorizontalAlignment="Center"
+                        Command="{Binding BrowseForKitCommand}"/>
+                <TextBlock Text="{Binding OpenError}" Classes="error" TextAlignment="Center"
+                           IsVisible="{Binding OpenError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
+            <TabControl IsVisible="{Binding IsKitOpen}" Padding="0" Margin="10,4,10,0">
+                <TabItem Header="Overview">
+                    <ScrollViewer>
+                        <StackPanel Margin="8,12" Spacing="14" MaxWidth="900" HorizontalAlignment="Left">
+                            <Border Classes="card">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="KIT CHECK" Classes="section"/>
+                                            <TextBlock Classes="hint" Text="Runs tools\Test-Kit.ps1 after every change: the same check a build runs first."/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Check again" VerticalAlignment="Top"
+                                                Command="{Binding RunCheckCommand}"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding CheckSummary}" FontSize="14" FontWeight="SemiBold"/>
+                                    <ItemsControl ItemsSource="{Binding Errors}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="x:String">
+                                                <TextBlock Text="{Binding StringFormat='• {0}'}" Classes="error" Margin="0,2"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <ItemsControl ItemsSource="{Binding Warnings}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="x:String">
+                                                <TextBlock Text="{Binding StringFormat='• {0}'}" Classes="warning" Margin="0,2"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="WHERE THINGS ARE" Classes="section"/>
+                                    <TextBlock TextWrapping="Wrap" Text="Settings: edition, time zone, Wi-Fi, passwords, apps removed from Windows, Start pins (settings.json and secrets.json)."/>
+                                    <TextBlock TextWrapping="Wrap" Text="Scripts: everything the install does, by phase. Switch scripts on or off, change their order, add new ones."/>
+                                    <TextBlock TextWrapping="Wrap" Text="Drivers: one folder per hardware model, matched by model name at install time."/>
+                                    <TextBlock TextWrapping="Wrap" Text="Build: put the kit on a USB stick (or an ISO for a VM)."/>
+                                    <TextBlock Classes="hint" Margin="0,4,0,0"
+                                               Text="Apps installed with winget come from Scripts\firstlogon\_installers.ps1, which PT Script Builder generates."/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Settings" Content="{Binding Settings}"/>
+                <TabItem Header="Scripts" Content="{Binding Scripts}"/>
+                <TabItem Header="Drivers" Content="{Binding Drivers}"/>
+                <TabItem Header="Build" Content="{Binding Build}"/>
+            </TabControl>
+        </Panel>
+    </DockPanel>
+</Window>

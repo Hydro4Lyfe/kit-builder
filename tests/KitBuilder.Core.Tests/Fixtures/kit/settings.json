@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "language": {
+    "uiLanguage": "en-US",
+    "inputLocale": "0409:00000409",
+    "systemLocale": "en-US",
+    "userLocale": "en-US"
+  },
+  "edition": "Windows 11 Pro",
+  "timeZone": "Mountain Standard Time",
+  "wifi": {
+    "enabled": true,
+    "ssid": "PremierTech Client",
+    "hidden": true,
+    "authentication": "WPA3SAE"
+  },
+  "startPins": [
+    {
+      "desktopAppLink": "%ALLUSERSPROFILE%\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Edge.lnk"
+    },
+    {
+      "desktopAppLink": "%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\File Explorer.lnk"
+    },
+    {
+      "packagedAppId": "windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel"
+    }
+  ],
+  "removeApps": [
+    "Microsoft.Microsoft3DViewer",
+    "Microsoft.BingSearch",
+    "Clipchamp.Clipchamp",
+    "Microsoft.WindowsAlarms",
+    "Microsoft.Copilot",
+    "Microsoft.549981C3F5F10",
+    "Microsoft.Windows.DevHome",
+    "MicrosoftCorporationII.MicrosoftFamily",
+    "Microsoft.WindowsFeedbackHub",
+    "Microsoft.GetHelp",
+    "Microsoft.Getstarted",
+    "microsoft.windowscommunicationsapps",
+    "Microsoft.WindowsMaps",
+    "Microsoft.MixedReality.Portal",
+    "Microsoft.BingNews",
+    "Microsoft.MicrosoftOfficeHub",
+    "Microsoft.Office.OneNote",
+    "Microsoft.OutlookForWindows",
+    "Microsoft.Paint",
+    "Microsoft.MSPaint",
+    "Microsoft.People",
+    "Microsoft.PowerAutomateDesktop",
+    "MicrosoftCorporationII.QuickAssist",
+    "Microsoft.SkypeApp",
+    "Microsoft.MicrosoftSolitaireCollection",
+    "Microsoft.MicrosoftStickyNotes",
+    "MicrosoftTeams",
+    "MSTeams",
+    "Microsoft.Todos",
+    "Microsoft.WindowsSoundRecorder",
+    "Microsoft.Wallet",
+    "Microsoft.BingWeather",
+    "Microsoft.Xbox.TCUI",
+    "Microsoft.XboxApp",
+    "Microsoft.XboxGameOverlay",
+    "Microsoft.XboxGamingOverlay",
+    "Microsoft.XboxIdentityProvider",
+    "Microsoft.XboxSpeechToTextOverlay",
+    "Microsoft.GamingApp",
+    "Microsoft.YourPhone",
+    "Microsoft.ZuneMusic",
+    "Microsoft.ZuneVideo"
+  ],
+  "removeCapabilities": [
+    "Language.Handwriting",
+    "Browser.InternetExplorer",
+    "MathRecognizer",
+    "OneCoreUAP.OneSync",
+    "OpenSSH.Client",
+    "Microsoft.Windows.MSPaint",
+    "Microsoft.Windows.PowerShell.ISE",
+    "App.Support.QuickAssist",
+    "Language.Speech",
+    "Language.TextToSpeech",
+    "App.StepsRecorder",
+    "Media.WindowsMediaPlayer",
+    "Microsoft.Windows.WordPad"
+  ],
+  "removeFeatures": [
+    "MediaPlayback",
+    "MicrosoftWindowsPowerShellV2Root",
+    "Recall"
+  ]
+}

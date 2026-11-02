@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KitBuilder.App.ViewModels"
+             x:Class="KitBuilder.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+    <UserControl.Styles>
+        <!-- Row spacing for the label/field grids (Grid.RowSpacing needs Avalonia 11.3). -->
+        <Style Selector="Grid.form > :is(Control)">
+            <Setter Property="Margin" Value="0,3"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+        <!-- Save bar -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource PtBarBg}"
+                BorderBrush="{DynamicResource PtBarBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Unsaved changes" Classes="warning" IsVisible="{Binding IsDirty}"/>
+                    <TextBlock Text="{Binding Message}" Classes="ok" IsVisible="{Binding !MessageIsError}"/>
+                    <TextBlock Text="{Binding Message}" Classes="error" IsVisible="{Binding MessageIsError}"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="Reload from disk" Classes="ghost" Margin="0,0,8,0"
+                        Command="{Binding ReloadCommand}"/>
+                <Button Grid.Column="2" Content="Save settings" Classes="accent" Command="{Binding SaveCommand}"/>
+            </Grid>
+        </Border>
+
+        <ScrollViewer>
+            <StackPanel Margin="8,12" Spacing="14" MaxWidth="900" HorizontalAlignment="Left">
+
+                <Border Classes="card">
+                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto" Classes="form">
+                        <TextBlock Grid.ColumnSpan="2" Text="WINDOWS" Classes="section"/>
+                        <TextBlock Grid.Row="1" Text="Edition" Classes="label"/>
+                        <AutoCompleteBox Grid.Row="1" Grid.Column="1" Text="{Binding Edition}" Width="320"
+                                         HorizontalAlignment="Left" ItemsSource="{Binding Editions}" FilterMode="Contains"
+                                         MinimumPrefixLength="0"/>
+                        <TextBlock Grid.Row="2" Text="Time zone" Classes="label"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Spacing="4">
+                            <AutoCompleteBox Text="{Binding TimeZone}" Width="320" HorizontalAlignment="Left"
+                                             ItemsSource="{Binding TimeZones}" FilterMode="Contains"/>
+                            <TextBlock Classes="warning" IsVisible="{Binding TimeZoneUnknown}"
+                                       Text="Not a Windows time zone name on this PC. Pick one from the list, e.g. Mountain Standard Time."/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Text="Language" Classes="label" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                        <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="Auto,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Classes="form">
+                            <TextBlock Text="Windows display" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="2" Text="{Binding UiLanguage}" Width="160"/>
+                            <TextBlock Grid.Row="1" Text="Keyboard" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding InputLocale}" Width="160"/>
+                            <TextBlock Grid.Row="2" Text="System locale" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding SystemLocale}" Width="160"/>
+                            <TextBlock Grid.Row="3" Text="Formats" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="3" Grid.Column="2" Text="{Binding UserLocale}" Width="160"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Classes="card">
+                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto" Classes="form">
+                        <TextBlock Grid.ColumnSpan="2" Text="ADMINISTRATOR AND PASSWORDS" Classes="section"/>
+                        <TextBlock Grid.Row="1" Text="Admin password" Classes="label"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding AdminPassword}" Width="320"
+                                 HorizontalAlignment="Left" PasswordChar="{Binding PasswordChar}"/>
+                        <CheckBox Grid.Row="2" Grid.Column="1" Content="Show passwords" IsChecked="{Binding RevealPasswords}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Classes="hint"
+                                   Text="Passwords are kept in secrets.json, which is not in git. They are deleted from each machine at the end of setup."/>
+                    </Grid>
+                </Border>
+
+                <Border Classes="card">
+                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Classes="form">
+                        <TextBlock Grid.ColumnSpan="2" Text="WI-FI DURING SETUP" Classes="section"/>
+                        <CheckBox Grid.Row="1" Grid.Column="1" Content="Connect to Wi-Fi during setup (for app installs)"
+                                  IsChecked="{Binding WifiEnabled}"/>
+                        <TextBlock Grid.Row="2" Text="Network name" Classes="label"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding WifiSsid}" Width="320"
+                                 HorizontalAlignment="Left" IsEnabled="{Binding WifiEnabled}"/>
+                        <TextBlock Grid.Row="3" Text="Password" Classes="label"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding WifiPassword}" Width="320"
+                                 HorizontalAlignment="Left" PasswordChar="{Binding PasswordChar}" IsEnabled="{Binding WifiEnabled}"/>
+                        <TextBlock Grid.Row="4" Text="Security" Classes="label"/>
+                        <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding WifiAuthentications}"
+                                  SelectedItem="{Binding WifiAuthentication}" Width="160" IsEnabled="{Binding WifiEnabled}"/>
+                        <CheckBox Grid.Row="5" Grid.Column="1" Content="Hidden network (does not broadcast its name)"
+                                  IsChecked="{Binding WifiHidden}" IsEnabled="{Binding WifiEnabled}"/>
+                    </Grid>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="REMOVED FROM WINDOWS" Classes="section"/>
+                        <TextBlock Classes="hint" Text="One name per line. Removed during setup by Scripts\specialize\04-remove-apps.ps1; each removal is logged in C:\Windows\Setup\Scripts\Remove*.log."/>
+                        <Grid ColumnDefinitions="*,10,*,10,*">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Store apps" Classes="label"/>
+                                <TextBox Text="{Binding RemoveAppsText}" Classes="mono" AcceptsReturn="True"
+                                         Height="220" TextWrapping="NoWrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="Capabilities" Classes="label"/>
+                                <TextBox Text="{Binding RemoveCapabilitiesText}" Classes="mono" AcceptsReturn="True"
+                                         Height="220" TextWrapping="NoWrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Spacing="4">
+                                <TextBlock Text="Optional features" Classes="label"/>
+                                <TextBox Text="{Binding RemoveFeaturesText}" Classes="mono" AcceptsReturn="True"
+                                         Height="220" TextWrapping="NoWrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Text="START MENU PINS" Classes="section"/>
+                                <TextBlock Classes="hint" Text="desktopAppLink is the path of a .lnk shortcut; packagedAppId is a Store app's ID."/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Add pin" VerticalAlignment="Top" Command="{Binding AddPinCommand}"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Pins}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PinRowViewModel">
+                                    <Grid ColumnDefinitions="160,8,*,8,Auto" Margin="0,3">
+                                        <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}"
+                                                  HorizontalAlignment="Stretch"/>
+                                        <TextBox Grid.Column="2" Text="{Binding Value}" Classes="mono"/>
+                                        <Button Grid.Column="4" Content="Remove" Classes="danger" Command="{Binding RemoveCommand}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

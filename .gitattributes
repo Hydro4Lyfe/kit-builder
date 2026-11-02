@@ -1,0 +1,9 @@
+# The test fixture kit mirrors the real kit, which Windows tools read: keep its
+# Windows line endings (and the tool scripts' CRLF) in every checkout.
+tests/KitBuilder.Core.Tests/Fixtures/** text eol=crlf
+*.ps1 text eol=crlf
+
+# Everything else: normalize to LF in the repo.
+* text=auto
+*.png binary
+*.ico binary

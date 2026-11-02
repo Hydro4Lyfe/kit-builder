@@ -1,0 +1,53 @@
+Windows Registry Editor Version 5.00
+
+; Settings for the Default profile, so every account created on this machine
+; starts with them. Carried over from the original generated answer file.
+;
+; The Default hive is loaded at HKEY_USERS\DefaultUser while this phase runs, so
+; every key here must start with HKEY_USERS\DefaultUser - not HKEY_CURRENT_USER.
+; (For settings that must apply as the signed-in user, use useronce\ instead.)
+
+; Turn off Windows Copilot.
+[HKEY_USERS\DefaultUser\Software\Policies\Microsoft\Windows\WindowsCopilot]
+"TurnOffWindowsCopilot"=dword:00000001
+
+; Created empty on purpose (carried over unchanged from the generator).
+[HKEY_USERS\DefaultUser\Software\Microsoft\Internet Explorer\LowRegistry\Audio\PolicyConfig\PropertyStore]
+
+; Do not run the OneDrive installer for new users.
+[HKEY_USERS\DefaultUser\Software\Microsoft\Windows\CurrentVersion\Run]
+"OneDriveSetup"=-
+
+; Turn off Game DVR background recording.
+[HKEY_USERS\DefaultUser\Software\Microsoft\Windows\CurrentVersion\GameDVR]
+"AppCaptureEnabled"=dword:00000000
+
+; Explorer: show file extensions, hide the Task View button, left-align the taskbar.
+[HKEY_USERS\DefaultUser\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+"HideFileExt"=dword:00000000
+"ShowTaskViewButton"=dword:00000000
+"TaskbarAl"=dword:00000000
+
+; No web suggestions in the Start menu search box.
+[HKEY_USERS\DefaultUser\Software\Policies\Microsoft\Windows\Explorer]
+"DisableSearchBoxSuggestions"=dword:00000001
+
+; No suggested apps, tips or promoted content.
+[HKEY_USERS\DefaultUser\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager]
+"ContentDeliveryAllowed"=dword:00000000
+"FeatureManagementEnabled"=dword:00000000
+"OEMPreInstalledAppsEnabled"=dword:00000000
+"PreInstalledAppsEnabled"=dword:00000000
+"PreInstalledAppsEverEnabled"=dword:00000000
+"SilentInstalledAppsEnabled"=dword:00000000
+"SoftLandingEnabled"=dword:00000000
+"SubscribedContentEnabled"=dword:00000000
+"SubscribedContent-310093Enabled"=dword:00000000
+"SubscribedContent-338387Enabled"=dword:00000000
+"SubscribedContent-338388Enabled"=dword:00000000
+"SubscribedContent-338389Enabled"=dword:00000000
+"SubscribedContent-338393Enabled"=dword:00000000
+"SubscribedContent-353694Enabled"=dword:00000000
+"SubscribedContent-353696Enabled"=dword:00000000
+"SubscribedContent-353698Enabled"=dword:00000000
+"SystemPaneSuggestionsEnabled"=dword:00000000

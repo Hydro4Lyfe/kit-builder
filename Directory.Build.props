@@ -1,0 +1,10 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Single source of truth for the app version (shown in the window title). -->
+    <Version>1.0.0</Version>
+    <!-- Keep InformationalVersion exactly "X.Y.Z"; SourceLink would otherwise append "+<git-sha>". -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+</Project>

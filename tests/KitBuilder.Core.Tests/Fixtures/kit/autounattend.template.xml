@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	DO NOT EDIT THE RENDERED autounattend.xml. Change settings.json / secrets.json and run tools\Build-Kit.ps1.
+
+	This template is plumbing only. Placeholders in double braces are filled from settings.json and secrets.json at build time.
+	Everything the install actually does lives in Scripts\<phase>\ - see README.md.
+	Each component is listed once per architecture (amd64, arm64); Windows Setup uses the one matching the install media.
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+	<settings pass="windowsPE">
+		<component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<UILanguage>{{UILanguage}}</UILanguage>
+		</component>
+		<component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<UILanguage>{{UILanguage}}</UILanguage>
+		</component>
+		<!-- No DiskConfiguration: the technician picks the disk/partition interactively. -->
+		<component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<ImageInstall>
+				<OSImage>
+					<Compact>false</Compact>
+					<InstallFrom>
+						<MetaData wcm:action="add">
+							<Key>/IMAGE/NAME</Key>
+							<Value>{{Edition}}</Value>
+						</MetaData>
+					</InstallFrom>
+				</OSImage>
+			</ImageInstall>
+			<UserData>
+				<!-- Generic key: activation uses the key stored in the machine's firmware. -->
+				<ProductKey>
+					<Key>00000-00000-00000-00000-00000</Key>
+					<WillShowUI>OnError</WillShowUI>
+				</ProductKey>
+				<AcceptEula>true</AcceptEula>
+			</UserData>
+			<UseConfigurationSet>false</UseConfigurationSet>
+		</component>
+		<component name="Microsoft-Windows-Setup" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<ImageInstall>
+				<OSImage>
+					<Compact>false</Compact>
+					<InstallFrom>
+						<MetaData wcm:action="add">
+							<Key>/IMAGE/NAME</Key>
+							<Value>{{Edition}}</Value>
+						</MetaData>
+					</InstallFrom>
+				</OSImage>
+			</ImageInstall>
+			<UserData>
+				<ProductKey>
+					<Key>00000-00000-00000-00000-00000</Key>
+					<WillShowUI>OnError</WillShowUI>
+				</ProductKey>
+				<AcceptEula>true</AcceptEula>
+			</UserData>
+			<UseConfigurationSet>false</UseConfigurationSet>
+		</component>
+	</settings>
+	<settings pass="specialize">
+		<!--
+			1. Bootstrap (ExtractScript below) copies Scripts\, settings.json and secrets.json off the USB.
+			2. Specialize phase scripts.
+			3-5. Default-user phase scripts, with the Default profile hive loaded at HKU\DefaultUser.
+		-->
+		<component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<RunSynchronous>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>1</Order>
+					<Path>powershell.exe -WindowStyle Normal -NoProfile -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>2</Order>
+					<Path>powershell.exe -WindowStyle Normal -NoProfile -Command "Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\Custom\_system\Specialize.ps1' -Raw | Invoke-Expression;"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>3</Order>
+					<Path>reg.exe load "HKU\DefaultUser" "C:\Users\Default\NTUSER.DAT"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>4</Order>
+					<Path>powershell.exe -WindowStyle Normal -NoProfile -Command "Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\Custom\_system\DefaultUser.ps1' -Raw | Invoke-Expression;"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>5</Order>
+					<Path>reg.exe unload "HKU\DefaultUser"</Path>
+				</RunSynchronousCommand>
+			</RunSynchronous>
+		</component>
+		<component name="Microsoft-Windows-Deployment" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<RunSynchronous>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>1</Order>
+					<Path>powershell.exe -WindowStyle Normal -NoProfile -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>2</Order>
+					<Path>powershell.exe -WindowStyle Normal -NoProfile -Command "Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\Custom\_system\Specialize.ps1' -Raw | Invoke-Expression;"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>3</Order>
+					<Path>reg.exe load "HKU\DefaultUser" "C:\Users\Default\NTUSER.DAT"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>4</Order>
+					<Path>powershell.exe -WindowStyle Normal -NoProfile -Command "Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\Custom\_system\DefaultUser.ps1' -Raw | Invoke-Expression;"</Path>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>5</Order>
+					<Path>reg.exe unload "HKU\DefaultUser"</Path>
+				</RunSynchronousCommand>
+			</RunSynchronous>
+		</component>
+		<component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<TimeZone>{{TimeZone}}</TimeZone>
+		</component>
+		<component name="Microsoft-Windows-Shell-Setup" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<TimeZone>{{TimeZone}}</TimeZone>
+		</component>
+	</settings>
+	<settings pass="oobeSystem">
+		<component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<InputLocale>{{InputLocale}}</InputLocale>
+			<SystemLocale>{{SystemLocale}}</SystemLocale>
+			<UILanguage>{{UILanguage}}</UILanguage>
+			<UserLocale>{{UserLocale}}</UserLocale>
+		</component>
+		<component name="Microsoft-Windows-International-Core" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<InputLocale>{{InputLocale}}</InputLocale>
+			<SystemLocale>{{SystemLocale}}</SystemLocale>
+			<UILanguage>{{UILanguage}}</UILanguage>
+			<UserLocale>{{UserLocale}}</UserLocale>
+		</component>
+		<!-- Built-in Administrator, logged on automatically once so the firstlogon phase can run. -->
+		<component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<UserAccounts>
+				<AdministratorPassword>
+					<Value>{{AdminPassword}}</Value>
+					<PlainText>true</PlainText>
+				</AdministratorPassword>
+			</UserAccounts>
+			<AutoLogon>
+				<Username>Administrator</Username>
+				<Enabled>true</Enabled>
+				<LogonCount>1</LogonCount>
+				<Password>
+					<Value>{{AdminPassword}}</Value>
+					<PlainText>true</PlainText>
+				</Password>
+			</AutoLogon>
+			<OOBE>
+				<ProtectYourPC>3</ProtectYourPC>
+				<HideEULAPage>true</HideEULAPage>
+				<HideOnlineAccountScreens>false</HideOnlineAccountScreens>
+			</OOBE>
+			<FirstLogonCommands>
+				<SynchronousCommand wcm:action="add">
+					<Order>1</Order>
+					<CommandLine>powershell.exe -WindowStyle Normal -NoProfile -Command "Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\Custom\_system\FirstLogon.ps1' -Raw | Invoke-Expression;"</CommandLine>
+				</SynchronousCommand>
+			</FirstLogonCommands>
+		</component>
+		<component name="Microsoft-Windows-Shell-Setup" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<UserAccounts>
+				<AdministratorPassword>
+					<Value>{{AdminPassword}}</Value>
+					<PlainText>true</PlainText>
+				</AdministratorPassword>
+			</UserAccounts>
+			<AutoLogon>
+				<Username>Administrator</Username>
+				<Enabled>true</Enabled>
+				<LogonCount>1</LogonCount>
+				<Password>
+					<Value>{{AdminPassword}}</Value>
+					<PlainText>true</PlainText>
+				</Password>
+			</AutoLogon>
+			<OOBE>
+				<ProtectYourPC>3</ProtectYourPC>
+				<HideEULAPage>true</HideEULAPage>
+				<HideOnlineAccountScreens>false</HideOnlineAccountScreens>
+			</OOBE>
+			<FirstLogonCommands>
+				<SynchronousCommand wcm:action="add">
+					<Order>1</Order>
+					<CommandLine>powershell.exe -WindowStyle Normal -NoProfile -Command "Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\Custom\_system\FirstLogon.ps1' -Raw | Invoke-Expression;"</CommandLine>
+				</SynchronousCommand>
+			</FirstLogonCommands>
+		</component>
+	</settings>
+	<Extensions xmlns="https://schneegans.de/windows/unattend-generator/">
+		<ExtractScript>
+# Bootstrap - the only script embedded in this answer file, because nothing is on C: yet.
+#
+# Finds the kit drive (the one with \Scripts\_scripts.marker), then copies Scripts\ to
+# C:\Windows\Setup\Scripts\Custom along with settings.json and secrets.json. Everything
+# after this runs from that copy, so later phases still work once the USB is pulled.
+
+param(
+    [xml] $Document
+);
+
+$setupRoot = 'C:\Windows\Setup\Scripts';
+mkdir -Path $setupRoot -ErrorAction 'SilentlyContinue' | Out-Null;
+
+&amp; {
+    $targetRoot = Join-Path -Path $setupRoot -ChildPath 'Custom';
+
+    $kitRoot = [System.IO.DriveInfo]::GetDrives() |
+        Where-Object -FilterScript { $_.IsReady } |
+        ForEach-Object -Process { $_.RootDirectory.FullName; } |
+        Where-Object -FilterScript { Test-Path -LiteralPath ( Join-Path -Path $_ -ChildPath 'Scripts\_scripts.marker' ); } |
+        Select-Object -First 1;
+
+    if( -not $kitRoot ) {
+        "WARNING: no kit drive found; looked for &lt;drive&gt;\Scripts\_scripts.marker on every ready drive.";
+        return;
+    }
+
+    mkdir -Path $targetRoot -ErrorAction 'SilentlyContinue' | Out-Null;
+    Copy-Item -Path ( Join-Path -Path $kitRoot -ChildPath 'Scripts\*' ) -Destination $targetRoot -Recurse -Force;
+
+    # secrets.json gets a leading underscore so nothing mistakes it for a script;
+    # FirstLogon.ps1 deletes it once setup is done.
+    foreach( $pair in @( @( 'settings.json', 'settings.json' ), @( 'secrets.json', '_secrets.json' ) ) ) {
+        $source = Join-Path -Path $kitRoot -ChildPath $pair[0];
+        if( Test-Path -LiteralPath $source ) {
+            Copy-Item -LiteralPath $source -Destination ( Join-Path -Path $targetRoot -ChildPath $pair[1] ) -Force;
+        } else {
+            "WARNING: {0} not found on the kit drive." -f $pair[0];
+        }
+    }
+
+    # reg.exe wants UTF-16LE, so authors can keep editing the .reg files as plain text.
+    $unicode = [System.Text.UnicodeEncoding]::new( $false, $true );
+    foreach( $reg in Get-ChildItem -LiteralPath $targetRoot -Filter '*.reg' -Recurse -File ) {
+        $content = Get-Content -LiteralPath $reg.FullName -Raw;
+        [System.IO.File]::WriteAllBytes( $reg.FullName, $unicode.GetPreamble() + $unicode.GetBytes( $content ) );
+    }
+
+    "Copied the kit from '$kitRoot' to '$targetRoot'.";
+} *&gt;&amp;1 | Out-String -Stream &gt;&gt; ( Join-Path -Path $setupRoot -ChildPath 'Bootstrap.log' );
+		</ExtractScript>
+	</Extensions>
+</unattend>

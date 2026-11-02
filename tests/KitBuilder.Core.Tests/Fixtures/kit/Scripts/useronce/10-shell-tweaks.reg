@@ -1,0 +1,11 @@
+Windows Registry Editor Version 5.00
+
+; Per-user shell settings, carried over from the original generated answer file.
+
+; Classic (Windows 10 style) right-click menu.
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
+@=""
+
+; Taskbar search shows as a labelled search box.
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
+"SearchboxTaskbarMode"=dword:00000003
