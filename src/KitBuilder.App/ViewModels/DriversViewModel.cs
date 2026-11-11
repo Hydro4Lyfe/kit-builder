@@ -63,40 +63,40 @@ public partial class DriversViewModel : ViewModelBase
         var model = _library.AddModel(NewModelName, SplitLines(NewModelMatchText));
         NewModelName = "";
         NewModelMatchText = "";
-        return $"Added {model.Name}. Import its driver pack next.";
+        return $"Added {model.Name}. Next, add its drivers (below).";
     });
 
     internal void SaveMatch(DriverFolderViewModel folder) => Apply(() =>
     {
         _library.SetMatchLines(folder.Folder, SplitLines(folder.MatchText));
-        return $"Saved match.txt for {folder.Name}.";
+        return $"Saved the computer models for {folder.DisplayName}.";
     });
 
     internal async Task RemoveAsync(DriverFolderViewModel folder)
     {
-        if (!await _dialogs.ConfirmAsync("Remove model",
-                $"Delete Drivers\\{folder.Name} and every driver in it ({folder.SizeText})?", "Delete"))
+        if (!await _dialogs.ConfirmAsync("Delete model",
+                $"Delete {folder.Name} and all of its drivers ({folder.SizeText})? This cannot be undone.", "Delete"))
             return;
         Apply(() =>
         {
             _library.RemoveModel(folder.Folder);
-            return $"Removed {folder.Name}.";
+            return $"Deleted {folder.Name}.";
         });
     }
 
     internal async Task ImportAsync(DriverFolderViewModel folder, bool fromFolder)
     {
         var source = fromFolder
-            ? await _dialogs.PickFolderAsync($"Driver pack folder for {folder.Name}")
-            : await _dialogs.PickFileAsync($"Driver pack for {folder.Name}", "Driver packs", ["*.zip", "*.cab", "*.exe"]);
+            ? await _dialogs.PickFolderAsync($"Folder of drivers for {folder.DisplayName}")
+            : await _dialogs.PickFileAsync($"Driver download for {folder.DisplayName}", "Driver downloads", ["*.zip", "*.cab", "*.exe"]);
         if (source is null) return;
 
         IsBusy = true;
-        ShowMessage($"Importing {Path.GetFileName(source)}...", isError: false);
+        ShowMessage($"Adding {Path.GetFileName(source)}...", isError: false);
         try
         {
             await _library.ImportPackAsync(folder.Folder, source);
-            ShowMessage($"Imported {Path.GetFileName(source)} into {folder.Name}.", isError: false);
+            ShowMessage($"Added the drivers from {Path.GetFileName(source)} to {folder.DisplayName}.", isError: false);
         }
         catch (Exception e) when (e is InvalidOperationException or IOException or UnauthorizedAccessException
                                       or PlatformNotSupportedException or InvalidDataException)
@@ -154,14 +154,27 @@ public partial class DriverFolderViewModel : ViewModelBase
     }
 
     public DriverFolder Folder { get; }
+
+    /// <summary>The folder name: the model name for models, _Common or $WinPEDriver$ otherwise.</summary>
     public string Name => Folder.Name;
+
     public bool IsModel => Folder.Kind == DriverFolderKind.Model;
+
+    public string DisplayName => Folder.Kind switch
+    {
+        DriverFolderKind.Common => "All computers",
+        DriverFolderKind.WinPe => "Needed by Windows Setup",
+        _ => Folder.Name,
+    };
+
+    /// <summary>Where it lives in the kit, shown small for anyone working with the folders by hand.</summary>
+    public string FolderLabel => Folder.Kind == DriverFolderKind.WinPe ? Folder.Name : $"Drivers\\{Folder.Name}";
 
     public string KindLabel => Folder.Kind switch
     {
-        DriverFolderKind.Common => "Installed on every machine",
-        DriverFolderKind.WinPe => "Loaded by Windows Setup itself: storage drivers for when Setup shows no disks",
-        _ => "Installed when a match.txt line matches the machine's model",
+        DriverFolderKind.Common => "Installed on every computer, whatever the model.",
+        DriverFolderKind.WinPe => "Only needed when Windows Setup cannot see the computer's disk (usually Intel RST/VMD storage drivers).",
+        _ => "Installed only on the computer models listed below.",
     };
 
     public string SizeText => Folder.SizeBytes switch
@@ -172,7 +185,12 @@ public partial class DriverFolderViewModel : ViewModelBase
         _ => $"{Folder.SizeBytes / 1_000_000_000.0:0.##} GB",
     };
 
-    public string Summary => $"{Folder.InfCount} .inf file(s), {SizeText}";
+    public string Summary => Folder.InfCount switch
+    {
+        0 => "No drivers yet",
+        1 => $"1 driver, {SizeText}",
+        var n => $"{n} drivers, {SizeText}",
+    };
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MatchChanged))]

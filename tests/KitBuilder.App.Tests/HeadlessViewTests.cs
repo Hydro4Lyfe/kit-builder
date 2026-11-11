@@ -43,10 +43,13 @@ public class HeadlessViewTests
         tabs.SelectedIndex = 2;
         window.UpdateLayout();
         Assert.NotNull(window.GetVisualDescendants().OfType<ScriptsView>().SingleOrDefault());
-        // The specialize phase is selected first: one switch per runnable or disabled file.
+        // The specialize phase is selected first: a switch per runnable or disabled file; the
+        // supporting file's switch is hidden. Each item shows its plain title and description.
         var switches = window.GetVisualDescendants().OfType<ToggleButton>().Where(t => t is not CheckBox and not RadioButton).ToList();
         Assert.Equal(5, switches.Count);
-        Assert.Equal(1, switches.Count(t => !t.IsEnabled));
+        Assert.Equal(4, switches.Count(t => t.IsVisible));
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Setting up the computer");
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Says gamma.");
 
         tabs.SelectedIndex = 3;
         window.UpdateLayout();

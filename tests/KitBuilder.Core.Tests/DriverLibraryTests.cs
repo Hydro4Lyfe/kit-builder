@@ -84,7 +84,7 @@ public class DriverLibraryTests
         File.WriteAllText(Path.Combine(pack, "setup.exe"), "");
 
         var e = await Assert.ThrowsAsync<InvalidOperationException>(() => library.ImportPackAsync(library.List()[0], pack));
-        Assert.Contains("no .inf files", e.Message);
+        Assert.Contains("contains no drivers", e.Message);
     }
 
     [Fact]

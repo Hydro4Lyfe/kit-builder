@@ -54,7 +54,7 @@ public class KitToolsTests
         var result = await new KitTools(kit.Kit, runner).CheckAsync();
 
         Assert.Equal(new[] { "only one" }, result.Errors);
-        Assert.Equal(new[] { "-Format", "Json" }, runner.LastArguments);
+        Assert.Equal(new[] { "-KitRoot", kit.Root, "-Format", "Json" }, runner.LastArguments);
     }
 
     [Fact]

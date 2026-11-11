@@ -16,6 +16,11 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The tests cover internal view-model helpers (title formatting). -->
+    <InternalsVisibleTo Include="KitBuilder.App.Tests" />
+  </ItemGroup>
+
   <!-- Same Avalonia/MVVM versions as PT Script Builder, so both apps share one stack. -->
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.3" />

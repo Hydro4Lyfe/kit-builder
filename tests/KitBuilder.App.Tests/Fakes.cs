@@ -56,9 +56,11 @@ public sealed class FakeDialogs : IDialogService
 public sealed class FakeDesktop : IDesktopService
 {
     public List<string> Opened { get; } = [];
+    public List<string> Edited { get; } = [];
     public string? Copied { get; private set; }
 
     public void Open(string path) => Opened.Add(path);
+    public void Edit(string path) => Edited.Add(path);
     public void Reveal(string path) => Opened.Add(path);
 
     public Task CopyTextAsync(string text)

@@ -51,10 +51,16 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _adminPassword = "";
     [ObservableProperty] private string _wifiPassword = "";
 
-    /// <summary>One entry per line; blank lines are ignored on save.</summary>
-    [ObservableProperty] private string _removeAppsText = "";
-    [ObservableProperty] private string _removeCapabilitiesText = "";
-    [ObservableProperty] private string _removeFeaturesText = "";
+    /// <summary>Built-in apps to remove (removeApps), as a checklist.</summary>
+    [ObservableProperty] private RemovalListViewModel _removeApps = Empty();
+
+    /// <summary>Windows capabilities to remove (removeCapabilities). Under Advanced.</summary>
+    [ObservableProperty] private RemovalListViewModel _removeCapabilities = Empty();
+
+    /// <summary>Optional features to remove (removeFeatures). Under Advanced.</summary>
+    [ObservableProperty] private RemovalListViewModel _removeFeatures = Empty();
+
+    private static RemovalListViewModel Empty() => new([], [], () => { });
 
     public ObservableCollection<PinRowViewModel> Pins { get; } = [];
 
@@ -114,9 +120,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WifiAuthentication = WifiAuthentication;
         _settings.AdminPassword = AdminPassword;
         _settings.WifiPassword = WifiPassword;
-        _settings.RemoveApps = SplitLines(RemoveAppsText);
-        _settings.RemoveCapabilities = SplitLines(RemoveCapabilitiesText);
-        _settings.RemoveFeatures = SplitLines(RemoveFeaturesText);
+        _settings.RemoveApps = RemoveApps.RemovedIds();
+        _settings.RemoveCapabilities = RemoveCapabilities.RemovedIds();
+        _settings.RemoveFeatures = RemoveFeatures.RemovedIds();
         _settings.StartPins = Pins.Where(p => p.Value.Trim().Length > 0)
             .Select(p => new StartPin(p.Kind, p.Value.Trim())).ToList();
 
@@ -173,9 +179,9 @@ public partial class SettingsViewModel : ViewModelBase
             WifiAuthentication = settings.WifiAuthentication.Length > 0 ? settings.WifiAuthentication : WifiAuthentications[0];
             AdminPassword = settings.AdminPassword;
             WifiPassword = settings.WifiPassword;
-            RemoveAppsText = string.Join(Environment.NewLine, settings.RemoveApps);
-            RemoveCapabilitiesText = string.Join(Environment.NewLine, settings.RemoveCapabilities);
-            RemoveFeaturesText = string.Join(Environment.NewLine, settings.RemoveFeatures);
+            RemoveApps = new RemovalListViewModel(RemovalCatalog.Apps, settings.RemoveApps, MarkDirty);
+            RemoveCapabilities = new RemovalListViewModel(RemovalCatalog.Capabilities, settings.RemoveCapabilities, MarkDirty);
+            RemoveFeatures = new RemovalListViewModel(RemovalCatalog.Features, settings.RemoveFeatures, MarkDirty);
             Pins.Clear();
             foreach (var pin in settings.StartPins)
                 Pins.Add(new PinRowViewModel(pin.Kind, pin.Value, RemovePin, MarkDirty));
@@ -200,9 +206,6 @@ public partial class SettingsViewModel : ViewModelBase
         Message = text;
         MessageIsError = isError;
     }
-
-    private static List<string> SplitLines(string text) =>
-        text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
 
     private static IReadOnlyList<string> LoadTimeZones()
     {
@@ -231,9 +234,22 @@ public partial class PinRowViewModel : ViewModelBase
         Value = value;
     }
 
-    public static IReadOnlyList<string> Kinds => StartPin.Kinds;
+    /// <summary>What the person picks from, in place of the raw desktopAppLink / packagedAppId names.</summary>
+    public static IReadOnlyList<string> KindLabels { get; } = ["Shortcut", "Store app"];
 
-    [ObservableProperty] private string _kind = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(KindLabel), nameof(ValueHint))]
+    private string _kind = "";
+
+    public string KindLabel
+    {
+        get => Kind == "packagedAppId" ? KindLabels[1] : KindLabels[0];
+        set => Kind = value == KindLabels[1] ? "packagedAppId" : "desktopAppLink";
+    }
+
+    public string ValueHint => Kind == "packagedAppId"
+        ? "Store app ID, e.g. windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel"
+        : @"Shortcut path, e.g. %ALLUSERSPROFILE%\Microsoft\Windows\Start Menu\Programs\Microsoft Edge.lnk";
     [ObservableProperty] private string _value = "";
 
     partial void OnKindChanged(string value) => _changed();

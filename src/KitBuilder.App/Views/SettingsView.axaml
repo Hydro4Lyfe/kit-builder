@@ -30,7 +30,7 @@
             <StackPanel Margin="8,12" Spacing="14" MaxWidth="900" HorizontalAlignment="Left">
 
                 <Border Classes="card">
-                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto" Classes="form">
+                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto" Classes="form">
                         <TextBlock Grid.ColumnSpan="2" Text="WINDOWS" Classes="section"/>
                         <TextBlock Grid.Row="1" Text="Edition" Classes="label"/>
                         <AutoCompleteBox Grid.Row="1" Grid.Column="1" Text="{Binding Edition}" Width="320"
@@ -41,19 +41,8 @@
                             <AutoCompleteBox Text="{Binding TimeZone}" Width="320" HorizontalAlignment="Left"
                                              ItemsSource="{Binding TimeZones}" FilterMode="Contains"/>
                             <TextBlock Classes="warning" IsVisible="{Binding TimeZoneUnknown}"
-                                       Text="Not a Windows time zone name on this PC. Pick one from the list, e.g. Mountain Standard Time."/>
+                                       Text="Windows does not recognise this time zone name. Start typing and pick one from the list, e.g. Mountain Standard Time."/>
                         </StackPanel>
-                        <TextBlock Grid.Row="3" Text="Language" Classes="label" VerticalAlignment="Top" Margin="0,6,0,0"/>
-                        <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="Auto,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Classes="form">
-                            <TextBlock Text="Windows display" Classes="hint" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="2" Text="{Binding UiLanguage}" Width="160"/>
-                            <TextBlock Grid.Row="1" Text="Keyboard" Classes="hint" VerticalAlignment="Center"/>
-                            <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding InputLocale}" Width="160"/>
-                            <TextBlock Grid.Row="2" Text="System locale" Classes="hint" VerticalAlignment="Center"/>
-                            <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding SystemLocale}" Width="160"/>
-                            <TextBlock Grid.Row="3" Text="Formats" Classes="hint" VerticalAlignment="Center"/>
-                            <TextBox Grid.Row="3" Grid.Column="2" Text="{Binding UserLocale}" Width="160"/>
-                        </Grid>
                     </Grid>
                 </Border>
 
@@ -90,25 +79,10 @@
 
                 <Border Classes="card">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="REMOVED FROM WINDOWS" Classes="section"/>
-                        <TextBlock Classes="hint" Text="One name per line. Removed during setup by Scripts\specialize\04-remove-apps.ps1; each removal is logged in C:\Windows\Setup\Scripts\Remove*.log."/>
-                        <Grid ColumnDefinitions="*,10,*,10,*">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Store apps" Classes="label"/>
-                                <TextBox Text="{Binding RemoveAppsText}" Classes="mono" AcceptsReturn="True"
-                                         Height="220" TextWrapping="NoWrap"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Spacing="4">
-                                <TextBlock Text="Capabilities" Classes="label"/>
-                                <TextBox Text="{Binding RemoveCapabilitiesText}" Classes="mono" AcceptsReturn="True"
-                                         Height="220" TextWrapping="NoWrap"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="4" Spacing="4">
-                                <TextBlock Text="Optional features" Classes="label"/>
-                                <TextBox Text="{Binding RemoveFeaturesText}" Classes="mono" AcceptsReturn="True"
-                                         Height="220" TextWrapping="NoWrap"/>
-                            </StackPanel>
-                        </Grid>
+                        <TextBlock Text="BUILT-IN APPS TO REMOVE" Classes="section"/>
+                        <TextBlock Classes="hint"
+                                   Text="Apps that come with Windows. Ticked apps are removed from every computer during setup; untick one to keep it."/>
+                        <ContentControl Content="{Binding RemoveApps}"/>
                     </StackPanel>
                 </Border>
 
@@ -117,7 +91,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel>
                                 <TextBlock Text="START MENU PINS" Classes="section"/>
-                                <TextBlock Classes="hint" Text="desktopAppLink is the path of a .lnk shortcut; packagedAppId is a Store app's ID."/>
+                                <TextBlock Classes="hint" Text="Apps pinned to the Start menu for every user, in this order. A shortcut is the path of a .lnk file; a Store app is its app ID."/>
                             </StackPanel>
                             <Button Grid.Column="1" Content="Add pin" VerticalAlignment="Top" Command="{Binding AddPinCommand}"/>
                         </Grid>
@@ -125,9 +99,9 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PinRowViewModel">
                                     <Grid ColumnDefinitions="160,8,*,8,Auto" Margin="0,3">
-                                        <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}"
+                                        <ComboBox ItemsSource="{Binding KindLabels}" SelectedItem="{Binding KindLabel}"
                                                   HorizontalAlignment="Stretch"/>
-                                        <TextBox Grid.Column="2" Text="{Binding Value}" Classes="mono"/>
+                                        <TextBox Grid.Column="2" Text="{Binding Value}" Classes="mono" Watermark="{Binding ValueHint}"/>
                                         <Button Grid.Column="4" Content="Remove" Classes="danger" Command="{Binding RemoveCommand}"/>
                                     </Grid>
                                 </DataTemplate>
@@ -135,6 +109,35 @@
                         </ItemsControl>
                     </StackPanel>
                 </Border>
+
+                <Expander Header="Advanced: language codes and Windows extras" HorizontalAlignment="Stretch">
+                    <StackPanel Spacing="14" Margin="0,6,0,0">
+                        <TextBlock Classes="hint" FontSize="12"
+                                   Text="Rarely changed. Wrong values here can stop setup or remove things people need."/>
+                        <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Classes="form">
+                            <TextBlock Grid.ColumnSpan="2" Text="LANGUAGE" Classes="section"/>
+                            <TextBlock Grid.Row="1" Text="Windows display" Classes="label"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding UiLanguage}" Width="160" HorizontalAlignment="Left"/>
+                            <TextBlock Grid.Row="2" Text="Keyboard" Classes="label"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding InputLocale}" Width="160" HorizontalAlignment="Left"/>
+                            <TextBlock Grid.Row="3" Text="System locale" Classes="label"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SystemLocale}" Width="160" HorizontalAlignment="Left"/>
+                            <TextBlock Grid.Row="4" Text="Date and number formats" Classes="label"/>
+                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding UserLocale}" Width="160" HorizontalAlignment="Left"/>
+                        </Grid>
+                        <TextBlock Classes="hint" Text="US English is en-US, with keyboard 0409:00000409."/>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="WINDOWS EXTRAS TO REMOVE" Classes="section"/>
+                            <TextBlock Classes="hint"
+                                       Text="Parts of Windows removed during setup. Windows keeps these in two lists, capabilities and optional features. Ticked items are removed."/>
+                            <TextBlock Text="Capabilities" Classes="label"/>
+                            <ContentControl Content="{Binding RemoveCapabilities}"/>
+                            <TextBlock Text="Optional features" Classes="label" Margin="0,8,0,0"/>
+                            <ContentControl Content="{Binding RemoveFeatures}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

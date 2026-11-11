@@ -40,11 +40,25 @@ public partial class ScriptsViewModel : ViewModelBase
         SelectedPhase ??= Phases[0];
     }
 
-    internal void Toggle(ScriptRowViewModel row, bool enable) => Apply(() =>
+    /// <summary>
+    /// Switches an item on or off. Items whose header has an "Important:" line ask first, since
+    /// switching those off breaks something without any error during setup.
+    /// </summary>
+    internal async Task ToggleAsync(ScriptRowViewModel row, bool enable)
     {
-        if (enable) _inventory.Enable(row.Script);
-        else _inventory.Disable(row.Script);
-    });
+        if (!enable && row.Important is { } important &&
+            !await _dialogs.ConfirmAsync($"Switch off {row.Title}?",
+                $"{important}\n\nSwitch it off anyway? It stays in the kit and can be switched back on.", "Switch off"))
+        {
+            row.RefreshSwitch();
+            return;
+        }
+        Apply(() =>
+        {
+            if (enable) _inventory.Enable(row.Script);
+            else _inventory.Disable(row.Script);
+        });
+    }
 
     internal void Move(ScriptRowViewModel row, int direction) => Apply(() =>
     {
@@ -63,14 +77,14 @@ public partial class ScriptsViewModel : ViewModelBase
         if (path is not null) Apply(() => _inventory.AddFile(phase.Name, path));
     }
 
-    internal void NewReg(PhaseViewModel phase) => Apply(() =>
+    internal void CreateScript(PhaseViewModel phase) => Apply(() =>
     {
-        var created = _inventory.NewRegFile(phase.Name, phase.NewRegName);
-        phase.NewRegName = "";
-        _desktop.Open(created.FullPath);
+        var created = _inventory.NewScript(phase.Name, phase.NewKind.Kind, phase.NewName, phase.NewDescription, phase.NewImportant);
+        phase.CloseNewScript();
+        _desktop.Edit(created.FullPath);
     });
 
-    internal void Open(ScriptRowViewModel row) => _desktop.Open(row.Script.FullPath);
+    internal void Edit(ScriptRowViewModel row) => _desktop.Edit(row.Script.FullPath);
 
     internal void Reveal(ScriptRowViewModel row) => _desktop.Reveal(row.Script.FullPath);
 
@@ -92,25 +106,73 @@ public partial class ScriptsViewModel : ViewModelBase
     }
 }
 
-/// <summary>One phase folder and its files.</summary>
+/// <summary>One phase folder and its files, named by when it runs rather than by its folder name.</summary>
 public partial class PhaseViewModel(ScriptsViewModel owner, string name) : ViewModelBase
 {
+    /// <summary>The folder name under Scripts\ (specialize, defaultuser, ...).</summary>
     public string Name { get; } = name;
+
+    public string DisplayName => Name switch
+    {
+        "specialize" => "Setting up the computer",
+        "defaultuser" => "Defaults for new users",
+        "firstlogon" => "First sign-in",
+        "useronce" => "Each user's first sign-in",
+        _ => Name,
+    };
+
+    public string FolderLabel => $"Scripts\\{Name}";
 
     public string Description => Name switch
     {
-        "specialize" => "Runs as SYSTEM before any user exists. Machine-wide settings (HKLM), drivers, app removal.",
-        "defaultuser" => "Settings every new account starts with. .reg files with keys under HKEY_USERS\\DefaultUser.",
-        "firstlogon" => "Runs once as Administrator, with network. Software installs, BitLocker.",
-        "useronce" => "Runs once for each user at their first logon. HKCU settings.",
+        "specialize" => "Runs before anyone signs in. Changes that apply to the whole computer: drivers, removing built-in apps, Windows settings.",
+        "defaultuser" => "Settings every new user account starts with, such as taskbar and Explorer options. Use registry settings files here.",
+        "firstlogon" => "Runs once, when the Administrator signs in automatically at the end of setup. The network is up, so apps install here.",
+        "useronce" => "Runs once for each person, the first time they sign in. Settings that must be applied as that user.",
         _ => "",
     };
 
     public ObservableCollection<ScriptRowViewModel> Items { get; } = [];
 
+    // ---- "New script" panel ------------------------------------------------------------
+
+    public static IReadOnlyList<NewScriptKindOption> Kinds { get; } =
+    [
+        new(NewScriptKind.PowerShell, "PowerShell script", "For anything: settings, files, installs. Runs top to bottom."),
+        new(NewScriptKind.Registry, "Registry settings", "Just registry values. Easiest to read and change later."),
+        new(NewScriptKind.Command, "Command file (.cmd)", "Command Prompt commands, one per line."),
+    ];
+
+    [ObservableProperty] private bool _isNewScriptOpen;
+
+    [ObservableProperty] private NewScriptKindOption _newKind = Kinds[0];
+
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(NewRegCommand))]
-    private string _newRegName = "";
+    [NotifyCanExecuteChangedFor(nameof(CreateScriptCommand))]
+    private string _newName = "";
+
+    /// <summary>One sentence: becomes the script's first comment line, shown in this list.</summary>
+    [ObservableProperty] private string _newDescription = "";
+
+    /// <summary>Optional: what breaks if it is switched off. Makes the app ask first.</summary>
+    [ObservableProperty] private string _newImportant = "";
+
+    [RelayCommand]
+    private void OpenNewScript()
+    {
+        // Settings for new users are almost always registry values.
+        NewKind = Name == "defaultuser" ? Kinds[1] : Kinds[0];
+        IsNewScriptOpen = true;
+    }
+
+    [RelayCommand]
+    internal void CloseNewScript()
+    {
+        IsNewScriptOpen = false;
+        NewName = "";
+        NewDescription = "";
+        NewImportant = "";
+    }
 
     internal void Load(IReadOnlyList<KitScript> scripts)
     {
@@ -121,14 +183,17 @@ public partial class PhaseViewModel(ScriptsViewModel owner, string name) : ViewM
     [RelayCommand]
     private Task AddFileAsync() => owner.AddFileAsync(this);
 
-    private bool CanNewReg() => NewRegName.Trim().Length > 0;
+    private bool CanCreateScript() => NewName.Trim().Length > 0;
 
-    [RelayCommand(CanExecute = nameof(CanNewReg))]
-    private void NewReg() => owner.NewReg(this);
+    [RelayCommand(CanExecute = nameof(CanCreateScript))]
+    private void CreateScript() => owner.CreateScript(this);
 
     [RelayCommand]
     private void OpenFolder() => owner.OpenFolder(this);
 }
+
+/// <summary>A choice in the "New script" panel.</summary>
+public sealed record NewScriptKindOption(NewScriptKind Kind, string Label, string Hint);
 
 /// <summary>One file in a phase folder.</summary>
 public partial class ScriptRowViewModel : ViewModelBase
@@ -139,6 +204,25 @@ public partial class ScriptRowViewModel : ViewModelBase
     {
         _owner = owner;
         Script = script;
+        var header = ScriptHeader.Read(script.FullPath);
+        Description = header.Description;
+        Important = header.Important;
+        // PT Script Builder writes this file and owns its header, so it is described here instead.
+        IsFromScriptBuilder = IsHelper && IsGeneratedByScriptBuilder(script.FullPath);
+        if (IsFromScriptBuilder)
+            Description = "The list of apps to install, made in PT Script Builder. Install apps runs it; to change the apps, regenerate it there.";
+    }
+
+    public bool IsFromScriptBuilder { get; }
+
+    private static bool IsGeneratedByScriptBuilder(string path)
+    {
+        if (!path.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase)) return false;
+        try
+        {
+            return File.ReadLines(path).Take(5).Any(l => l.Contains("Generated by PT Script Builder", StringComparison.Ordinal));
+        }
+        catch (IOException) { return false; }
     }
 
     public KitScript Script { get; }
@@ -147,22 +231,65 @@ public partial class ScriptRowViewModel : ViewModelBase
     public bool CanToggle => !IsHelper;
     public bool CanMove => Script.State == ScriptState.Enabled;
 
+    /// <summary>Text files only: a program (.exe) or a binary helper has nothing to edit.</summary>
+    public bool CanEdit => Path.GetExtension(FileName).ToLowerInvariant() is ".ps1" or ".reg" or ".cmd" or ".bat" or ".xml" or ".txt" or ".json";
+
+    /// <summary>"05-start-menu.ps1" shown as "Start menu".</summary>
+    public string Title => IsFromScriptBuilder ? "App list (from PT Script Builder)" : FriendlyTitle(Script.Title);
+
+    /// <summary>What the item does, from the first line of its own comment header.</summary>
+    public string? Description { get; }
+
+    /// <summary>What breaks if it is switched off (its "Important:" comment line), or null.</summary>
+    public string? Important { get; }
+
+    public string TypeLabel => IsHelper ? "Supporting file" : Path.GetExtension(FileName).ToLowerInvariant() switch
+    {
+        ".ps1" => "PowerShell script",
+        ".reg" => "Registry settings",
+        ".cmd" or ".bat" => "Command file",
+        ".exe" => "Program",
+        _ => "File",
+    };
+
     public string StateLabel => Script.State switch
     {
-        ScriptState.Helper => "helper file, used by another script",
-        ScriptState.Disabled => "off",
+        ScriptState.Helper => "Used by another item; does not run by itself",
+        ScriptState.Disabled => "Off: skipped during setup, but kept",
         _ => "",
     };
 
-    /// <summary>The on/off switch: turning it off moves the file into _disabled.</summary>
+    /// <summary>The on/off switch: turning it off moves the file into the phase's _disabled folder.</summary>
     public bool IsOn
     {
         get => Script.State == ScriptState.Enabled;
         set
         {
             if (value == IsOn || IsHelper) return;
-            _owner.Toggle(this, value);
+            _ = _owner.ToggleAsync(this, value);
         }
+    }
+
+    /// <summary>Puts the switch back when switching off was cancelled.</summary>
+    internal void RefreshSwitch() => OnPropertyChanged(nameof(IsOn));
+
+    private static readonly Dictionary<string, string> KnownWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["xps"] = "XPS", ["wifi"] = "Wi-Fi", ["bitlocker"] = "BitLocker", ["copilot"] = "Copilot",
+        ["edge"] = "Edge", ["windows"] = "Windows", ["hello"] = "Hello", ["admin"] = "Administrator",
+        ["onedrive"] = "OneDrive",
+    };
+
+    internal static string FriendlyTitle(string title)
+    {
+        var name = Path.GetFileNameWithoutExtension(title).TrimStart('_');
+        var words = name.Split(['-', '_', ' '], StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => KnownWords.TryGetValue(w, out var known) ? known : w)
+            .ToList();
+        if (words.Count == 0) return title;
+        if (!KnownWords.ContainsValue(words[0]) && words[0].Length > 0)
+            words[0] = char.ToUpperInvariant(words[0][0]) + words[0][1..];
+        return string.Join(" ", words);
     }
 
     [RelayCommand]
@@ -172,7 +299,7 @@ public partial class ScriptRowViewModel : ViewModelBase
     private void MoveDown() => _owner.Move(this, +1);
 
     [RelayCommand]
-    private void Open() => _owner.Open(this);
+    private void Edit() => _owner.Edit(this);
 
     [RelayCommand]
     private void Reveal() => _owner.Reveal(this);

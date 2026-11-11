@@ -2,6 +2,7 @@ namespace KitBuilder.Core.Tools;
 
 /// <summary>A drive the kit could be copied to.</summary>
 public sealed record DriveChoice(string Letter, string Label, long SizeBytes, bool IsRemovable, int RecoveryKeyFiles)
+
 {
     public string Display =>
         $"{Letter}  {(Label.Length > 0 ? Label : "(no label)")}  {SizeBytes / 1_000_000_000.0:0.#} GB" +

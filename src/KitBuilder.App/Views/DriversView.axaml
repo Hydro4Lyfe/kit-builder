@@ -6,26 +6,41 @@
     <ScrollViewer>
         <StackPanel Margin="8,12" Spacing="14" MaxWidth="900" HorizontalAlignment="Left">
 
+            <TextBlock Classes="hint" FontSize="12.5" Margin="2,0"
+                       Text="During setup, each computer gets the drivers listed for its own model, plus the ones for all computers."/>
+
             <Border Classes="card">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="ADD A MODEL" Classes="section"/>
-                    <TextBlock Classes="hint" FontSize="12"
-                               Text="1. On the new machine (or one like it), run this in PowerShell to get its model names:"/>
-                    <Grid ColumnDefinitions="*,8,Auto">
-                        <TextBox Text="{Binding ModelQueryCommand, Mode=OneWay}" Classes="mono" IsReadOnly="True" TextWrapping="Wrap"/>
-                        <Button Grid.Column="2" Content="Copy" Command="{Binding CopyModelQueryCommand}" VerticalAlignment="Top"/>
-                    </Grid>
-                    <TextBlock Classes="hint" FontSize="12"
-                               Text="2. Name the folder, and list the Model and Version values to match, one per line. * is a wildcard: Lenovo models look like 21HDCTO1WW, so 21HD* covers the type."/>
-                    <Grid ColumnDefinitions="260,10,*,10,Auto">
-                        <TextBox Text="{Binding NewModelName}" Watermark="Folder name, e.g. Dell Latitude 5450" VerticalAlignment="Top"/>
-                        <TextBox Grid.Column="2" Text="{Binding NewModelMatchText}" Classes="mono" AcceptsReturn="True"
-                                 Height="64" Watermark="Latitude 5450"/>
-                        <Button Grid.Column="4" Content="Add model" Classes="accent" VerticalAlignment="Top"
-                                Command="{Binding AddModelCommand}"/>
-                    </Grid>
-                    <TextBlock Classes="hint" FontSize="12"
-                               Text="3. Download the manufacturer's driver pack for that model and import it below."/>
+                <StackPanel Spacing="10">
+                    <TextBlock Text="ADD A COMPUTER MODEL" Classes="section"/>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock FontSize="12.5" Text="1. Find the computer's model name"/>
+                        <TextBlock Classes="hint" FontSize="12"
+                                   Text="On that computer (or one just like it), open PowerShell and paste this. It prints one or two names."/>
+                        <Grid ColumnDefinitions="*,8,Auto">
+                            <TextBox Text="{Binding ModelQueryCommand, Mode=OneWay}" Classes="mono" IsReadOnly="True" TextWrapping="Wrap"/>
+                            <Button Grid.Column="2" Content="Copy" Command="{Binding CopyModelQueryCommand}" VerticalAlignment="Top"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock FontSize="12.5" Text="2. Name it and list the model names it should match"/>
+                        <TextBlock Classes="hint" FontSize="12"
+                                   Text="Paste the names the command printed, one per line. End a name with * to match every model starting with that text: Lenovo names look like 21HDCTO1WW, so 21HD* covers all of that type."/>
+                        <Grid ColumnDefinitions="260,10,*,10,Auto">
+                            <TextBox Text="{Binding NewModelName}" Watermark="Name, e.g. Dell Latitude 5450" VerticalAlignment="Top"/>
+                            <TextBox Grid.Column="2" Text="{Binding NewModelMatchText}" Classes="mono" AcceptsReturn="True"
+                                     Height="64" Watermark="Latitude 5450"/>
+                            <Button Grid.Column="4" Content="Add model" Classes="accent" VerticalAlignment="Top"
+                                    Command="{Binding AddModelCommand}"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="12.5" Text="3. Add its drivers"/>
+                        <TextBlock Classes="hint" FontSize="12"
+                                   Text="Download the manufacturer's driver pack for that model (Dell: Driver Packs for Enterprise; HP: Driver Packs; Lenovo: SCCM driver packs), then use Add drivers on the new model below."/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -42,21 +57,29 @@
                             <StackPanel Spacing="8">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding KindLabel}" Classes="hint"/>
-                                        <TextBlock Text="{Binding Summary}" Classes="label"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding KindLabel}" FontSize="12" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource PtTextDim}"/>
+                                        <TextBlock Classes="hint">
+                                            <Run Text="{Binding Summary}"/>
+                                            <Run Text="  ·  "/>
+                                            <Run Text="{Binding FolderLabel}" FontFamily="{DynamicResource PtMono}"/>
+                                        </TextBlock>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top"
                                                 IsEnabled="{Binding $parent[UserControl].((vm:DriversViewModel)DataContext).IsIdle, FallbackValue=True}">
-                                        <Button Content="Import folder..." Command="{Binding ImportFolderCommand}"/>
-                                        <Button Content="Import .zip/.cab..." Command="{Binding ImportFileCommand}"/>
-                                        <Button Content="Show" Classes="ghost" Command="{Binding OpenCommand}"/>
-                                        <Button Content="Remove" Classes="danger" Command="{Binding RemoveCommand}"
+                                        <Button Content="Add drivers from a folder..." Command="{Binding ImportFolderCommand}"
+                                                ToolTip.Tip="A folder you have already extracted the driver pack into"/>
+                                        <Button Content="...from a download" Command="{Binding ImportFileCommand}"
+                                                ToolTip.Tip="A .zip or .cab driver pack. Installer .exe packs must be extracted first."/>
+                                        <Button Content="Show in folder" Classes="ghost" Command="{Binding OpenCommand}"/>
+                                        <Button Content="Delete model" Classes="danger" Command="{Binding RemoveCommand}"
                                                 IsVisible="{Binding IsModel}"/>
                                     </StackPanel>
                                 </Grid>
                                 <StackPanel Spacing="4" IsVisible="{Binding IsModel}">
-                                    <TextBlock Text="match.txt (one model name per line, * is a wildcard)" Classes="label"/>
+                                    <TextBlock Text="Computer models this applies to (one per line; end with * to match a whole range)"
+                                               Classes="label"/>
                                     <Grid ColumnDefinitions="*,8,Auto">
                                         <TextBox Text="{Binding MatchText}" Classes="mono" AcceptsReturn="True" MinHeight="44"/>
                                         <Button Grid.Column="2" Content="Save" VerticalAlignment="Top"

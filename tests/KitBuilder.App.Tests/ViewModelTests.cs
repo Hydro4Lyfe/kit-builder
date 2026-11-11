@@ -1,4 +1,6 @@
 using System.Text.Json.Nodes;
+using KitBuilder.App.ViewModels;
+using KitBuilder.Core.Kit;
 using KitBuilder.Core.Tools;
 
 namespace KitBuilder.App.Tests;
@@ -75,7 +77,10 @@ public class SettingsViewModelTests
 
         Assert.Equal("Windows 11 Pro", s.Edition);
         Assert.Equal("fixture-admin", s.AdminPassword);
-        Assert.Contains("Microsoft.BingNews", s.RemoveAppsText);
+        var news = s.RemoveApps.Items.Single(i => i.Id == "Microsoft.BingNews");
+        Assert.Equal("News", news.Name);
+        Assert.True(news.IsRemoved);
+        Assert.False(s.RemoveApps.Items.Single(i => i.Name == "Calculator").IsRemoved);
         Assert.Equal(3, s.Pins.Count);
         Assert.False(s.IsDirty);
         Assert.False(s.SaveCommand.CanExecute(null));
@@ -89,7 +94,7 @@ public class SettingsViewModelTests
 
         s.Edition = "Windows 11 Enterprise";
         s.WifiPassword = "new-wifi";
-        s.RemoveFeaturesText = "Recall\n\n  MediaPlayback \n";
+        s.RemoveFeatures.Items.Single(i => i.Id == "MicrosoftWindowsPowerShellV2Root").IsRemoved = false;
         s.Pins[0].Value = @"%APPDATA%\x.lnk";
         Assert.True(s.IsDirty);
 
@@ -98,7 +103,7 @@ public class SettingsViewModelTests
         Assert.False(s.IsDirty);
         var settings = JsonNode.Parse(File.ReadAllText(h.Kit.PathOf("settings.json")))!;
         Assert.Equal("Windows 11 Enterprise", (string?)settings["edition"]);
-        Assert.Equal(new[] { "Recall", "MediaPlayback" }, settings["removeFeatures"]!.AsArray().Select(n => (string?)n));
+        Assert.Equal(new[] { "MediaPlayback", "Recall" }, settings["removeFeatures"]!.AsArray().Select(n => (string?)n));
         Assert.Equal(@"%APPDATA%\x.lnk", (string?)settings["startPins"]![0]!["desktopAppLink"]);
         Assert.Equal("new-wifi", (string?)JsonNode.Parse(File.ReadAllText(h.Kit.PathOf("secrets.json")))!["wifiPassword"]);
         Assert.Equal(2, h.Runner.CheckCount);
@@ -203,18 +208,198 @@ public class ScriptsViewModelTests
     }
 
     [Fact]
-    public async Task New_reg_file_is_created_and_opened()
+    public async Task New_script_is_created_described_and_opened_in_notepad()
     {
         using var h = await new Harness().OpenAsync();
         var useronce = h.Main.Scripts!.Phases.Single(p => p.Name == "useronce");
-        Assert.False(useronce.NewRegCommand.CanExecute(null));
+        useronce.OpenNewScriptCommand.Execute(null);
+        Assert.True(useronce.IsNewScriptOpen);
+        Assert.False(useronce.CreateScriptCommand.CanExecute(null));
 
-        useronce.NewRegName = "Dark mode";
-        useronce.NewRegCommand.Execute(null);
+        useronce.NewKind = PhaseViewModel.Kinds.Single(k => k.Kind == NewScriptKind.Registry);
+        useronce.NewName = "Dark mode";
+        useronce.NewDescription = "Switches apps and Windows to dark mode";
+        useronce.CreateScriptCommand.Execute(null);
 
-        Assert.Contains(useronce.Items, r => r.FileName == "20-dark-mode.reg");
-        Assert.EndsWith("20-dark-mode.reg", h.Desktop.Opened.Last());
-        Assert.Equal("", useronce.NewRegName);
+        var row = useronce.Items.Single(r => r.FileName == "20-dark-mode.reg");
+        Assert.Equal("Switches apps and Windows to dark mode.", row.Description);
+        // Edited (Notepad), never opened with the default action, which would merge a .reg into this PC.
+        Assert.EndsWith("20-dark-mode.reg", h.Desktop.Edited.Single());
+        Assert.Empty(h.Desktop.Opened);
+        Assert.False(useronce.IsNewScriptOpen);
+        Assert.Equal("", useronce.NewName);
+    }
+
+    [Fact]
+    public async Task New_script_defaults_to_registry_for_new_user_defaults()
+    {
+        using var h = await new Harness().OpenAsync();
+        var phases = h.Main.Scripts!.Phases;
+
+        phases.Single(p => p.Name == "defaultuser").OpenNewScriptCommand.Execute(null);
+        phases.Single(p => p.Name == "firstlogon").OpenNewScriptCommand.Execute(null);
+
+        Assert.Equal(NewScriptKind.Registry, phases.Single(p => p.Name == "defaultuser").NewKind.Kind);
+        Assert.Equal(NewScriptKind.PowerShell, phases.Single(p => p.Name == "firstlogon").NewKind.Kind);
+    }
+}
+
+public class PlainLanguageTests
+{
+    [Fact]
+    public async Task Phases_and_items_use_plain_names_with_the_folder_names_secondary()
+    {
+        using var h = await new Harness().OpenAsync();
+        var phases = h.Main.Scripts!.Phases;
+
+        Assert.Equal(new[] { "Setting up the computer", "Defaults for new users", "First sign-in", "Each user's first sign-in" },
+            phases.Select(p => p.DisplayName));
+        Assert.Equal(@"Scripts\specialize", phases[0].FolderLabel);
+
+        var gamma = phases[0].Items.Single(r => r.FileName == "30-gamma.ps1");
+        Assert.Equal("Gamma", gamma.Title);
+        Assert.Equal("Says gamma.", gamma.Description);
+        Assert.Equal("Without it, nothing says gamma.", gamma.Important);
+        Assert.Equal("PowerShell script", gamma.TypeLabel);
+
+        var reg = phases[0].Items.Single(r => r.FileName == "20-system-tweaks.reg");
+        Assert.Equal("System tweaks", reg.Title);
+        Assert.Equal("Registry settings", reg.TypeLabel);
+        Assert.Equal("Supporting file", phases[0].Items.Single(r => r.IsHelper).TypeLabel);
+    }
+
+    [Theory]
+    [InlineData("xps-and-edge-search.ps1", "XPS and Edge search")]
+    [InlineData("wifi.ps1", "Wi-Fi")]
+    [InlineData("_WorldNationalParks.deskthemepack", "WorldNationalParks")]
+    [InlineData("admin-profile-picture.ps1", "Administrator profile picture")]
+    [InlineData("onedrive-and-permissions.ps1", "OneDrive and permissions")]
+    public void Titles_are_readable(string fileTitle, string expected) =>
+        Assert.Equal(expected, ViewModels.ScriptRowViewModel.FriendlyTitle(fileTitle));
+
+    [Fact]
+    public async Task Switching_off_an_important_item_asks_and_can_be_cancelled()
+    {
+        using var h = await new Harness().OpenAsync();
+        var specialize = h.Main.Scripts!.Phases[0];
+        var gamma = specialize.Items.Single(r => r.FileName == "30-gamma.ps1");
+        h.Dialogs.ConfirmAnswer = false;
+        var notified = false;
+        gamma.PropertyChanged += (_, e) => notified |= e.PropertyName == "IsOn";
+
+        gamma.IsOn = false;
+
+        Assert.Contains("Without it, nothing says gamma.", h.Dialogs.Confirmations.Single());
+        Assert.True(File.Exists(h.Kit.PathOf("Scripts", "specialize", "30-gamma.ps1")));
+        Assert.True(gamma.IsOn);
+        Assert.True(notified, "the switch is told to flip back");
+
+        h.Dialogs.ConfirmAnswer = true;
+        gamma.IsOn = false;
+        Assert.True(File.Exists(h.Kit.PathOf("Scripts", "specialize", "_disabled", "30-gamma.ps1")));
+    }
+
+    [Fact]
+    public async Task Ordinary_items_switch_off_without_asking()
+    {
+        using var h = await new Harness().OpenAsync();
+        h.Main.Scripts!.Phases[0].Items.Single(r => r.FileName == "10-alpha.ps1").IsOn = false;
+        Assert.Empty(h.Dialogs.Confirmations);
+    }
+
+    [Fact]
+    public async Task Driver_folders_use_plain_names()
+    {
+        using var h = await new Harness().OpenAsync();
+        var folders = h.Main.Drivers!.Folders;
+
+        Assert.Equal(new[] { "All computers", "Dell Latitude 5450", "Needed by Windows Setup" }, folders.Select(f => f.DisplayName));
+        Assert.Equal("No drivers yet", folders[0].Summary);
+        Assert.StartsWith("1 driver, ", folders[1].Summary);
+        Assert.Equal(@"Drivers\_Common", folders[0].FolderLabel);
+    }
+
+    [Fact]
+    public async Task Pin_types_show_as_shortcut_or_store_app()
+    {
+        using var h = await new Harness().OpenAsync();
+        var pins = h.Main.Settings!.Pins;
+
+        Assert.Equal("Shortcut", pins[0].KindLabel);
+        Assert.Equal("Store app", pins[2].KindLabel);
+
+        pins[0].KindLabel = "Store app";
+        Assert.Equal("packagedAppId", pins[0].Kind);
+        Assert.True(h.Main.Settings.IsDirty);
+    }
+}
+
+public class RemovalListTests
+{
+    [Fact]
+    public void Shows_known_names_offers_extras_unticked_and_keeps_unknown_ids()
+    {
+        var changes = 0;
+        var list = new RemovalListViewModel(KitBuilder.Core.Kit.RemovalCatalog.Apps,
+            ["Microsoft.BingWeather", "Contoso.Toolbar"], () => changes++);
+
+        Assert.True(list.Items.Single(i => i.Name == "Weather").IsRemoved);
+        Assert.False(list.Items.Single(i => i.Name == "Camera").IsRemoved);
+        var unknown = list.Items.Single(i => i.Id == "Contoso.Toolbar");
+        Assert.True(unknown.IsRemoved);
+        Assert.Equal("Added by name", unknown.Detail);
+        Assert.Equal(0, changes);
+        Assert.StartsWith("2 of ", list.Summary);
+    }
+
+    [Fact]
+    public void Saving_keeps_the_original_order_and_appends_new_ticks()
+    {
+        var list = new RemovalListViewModel(KitBuilder.Core.Kit.RemovalCatalog.Apps,
+            ["Microsoft.ZuneVideo", "Microsoft.BingWeather", "Microsoft.BingNews"], () => { });
+
+        list.Items.Single(i => i.Name == "Weather").IsRemoved = false;
+        list.Items.Single(i => i.Name == "Camera").IsRemoved = true;
+
+        Assert.Equal(new[] { "Microsoft.ZuneVideo", "Microsoft.BingNews", "Microsoft.WindowsCamera" }, list.RemovedIds());
+    }
+
+    [Fact]
+    public void Search_and_tick_all_shown_work_on_the_filtered_items()
+    {
+        var list = new RemovalListViewModel(KitBuilder.Core.Kit.RemovalCatalog.Apps, [], () => { });
+
+        list.Filter = "xbox";
+        Assert.All(list.Visible, i => Assert.Contains("Xbox", i.Name));
+        list.TickAllCommand.Execute(null);
+
+        // Matches on the name as well as the ID: "Xbox" is Microsoft.GamingApp.
+        Assert.Contains("Microsoft.GamingApp", list.RemovedIds());
+        Assert.Equal(list.Visible.Select(i => i.Id).Order(), list.RemovedIds().Order());
+    }
+
+    [Fact]
+    public void Adding_an_unlisted_id_ticks_it_and_marks_settings_dirty()
+    {
+        var changes = 0;
+        var list = new RemovalListViewModel(KitBuilder.Core.Kit.RemovalCatalog.Apps, [], () => changes++);
+        list.Filter = "zzz";
+
+        list.NewId = " Contoso.Toolbar ";
+        list.AddCommand.Execute(null);
+
+        Assert.Equal(new[] { "Contoso.Toolbar" }, list.RemovedIds());
+        Assert.Equal("", list.Filter);
+        Assert.Contains(list.Visible, i => i.Id == "Contoso.Toolbar");
+        Assert.True(changes > 0);
+    }
+
+    [Fact]
+    public async Task Ticking_in_settings_marks_the_form_dirty()
+    {
+        using var h = await new Harness().OpenAsync();
+        h.Main.Settings!.RemoveApps.Items.Single(i => i.Name == "Calculator").IsRemoved = true;
+        Assert.True(h.Main.Settings.IsDirty);
     }
 }
 
@@ -252,7 +437,7 @@ public class DriversViewModelTests
         drivers.AddModelCommand.Execute(null);
 
         Assert.True(drivers.MessageIsError);
-        Assert.Contains("already exists", drivers.Message);
+        Assert.Contains("already a model called", drivers.Message);
     }
 
     [Fact]

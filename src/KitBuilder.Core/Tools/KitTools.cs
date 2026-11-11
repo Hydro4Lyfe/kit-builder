@@ -32,7 +32,10 @@ public sealed class KitTools(KitFolder kit, IPowerShellRunner runner)
         int exitCode;
         try
         {
-            exitCode = await runner.RunAsync(kit.TestKitScript, ["-Format", "Json"], line => { lock (output) output.Add(line); }, ct);
+            // -KitRoot explicitly: the kit's own default relies on $PSScriptRoot, which older
+            // copies of Test-Kit.ps1 read too early under Windows PowerShell 5.1.
+            exitCode = await runner.RunAsync(kit.TestKitScript, ["-KitRoot", kit.Root, "-Format", "Json"],
+                line => { lock (output) output.Add(line); }, ct);
         }
         catch (InvalidOperationException e)
         {

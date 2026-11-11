@@ -15,9 +15,15 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $KitRoot = ( Split-Path -Parent $PSScriptRoot ),
+    # Defaults to the folder above tools\. Worked out below, not here: Windows PowerShell 5.1
+    # leaves $PSScriptRoot empty in param defaults when run with powershell.exe -File.
+    [string] $KitRoot,
     [ValidateSet( 'Text', 'Json' )] [string] $Format = 'Text'
 );
+
+if( -not $KitRoot ) {
+    $KitRoot = Split-Path -Parent $PSScriptRoot;
+}
 
 # Bump together with PT Kit Builder when the kit layout changes incompatibly.
 $supportedSchemaVersion = 1;
@@ -93,7 +99,7 @@ if( $settings ) {
         }
     }
     if( $settings.wifi -and $settings.wifi.enabled -and -not $settings.wifi.ssid ) {
-        Add-Problem Error "settings.json: wifi is enabled but 'wifi.ssid' is empty.";
+        Add-Problem Error "Wi-Fi is turned on but has no network name (settings.json: wifi.ssid).";
     }
     foreach( $name in @( 'startPins', 'removeApps', 'removeCapabilities', 'removeFeatures' ) ) {
         if( $null -ne $settings.$name -and $settings.$name -isnot [array] ) {
@@ -103,21 +109,21 @@ if( $settings ) {
     # firstlogon\50-windows-hello-face.ps1 installs this; removing it in specialize
     # first just forces a re-download (and fails without network).
     if( @( $settings.removeCapabilities ) -like 'Hello.Face*' ) {
-        Add-Problem Error "settings.json: removeCapabilities lists Hello.Face, but firstlogon/50-windows-hello-face.ps1 installs it. Keep one or the other.";
+        Add-Problem Error "Windows Hello face sign-in is on the removal list (settings.json: removeCapabilities), but firstlogon/50-windows-hello-face.ps1 installs it. Keep one or the other.";
     }
 }
 
 $secretsPath = Join-Path -Path $KitRoot -ChildPath 'secrets.json';
 if( -not ( Test-Path -LiteralPath $secretsPath ) ) {
-    Add-Problem Error 'Missing secrets.json. Copy secrets.example.json to secrets.json and fill in the passwords.';
+    Add-Problem Error 'The passwords file is missing. Copy secrets.example.json to secrets.json and fill in the passwords (or save the Settings tab in PT Kit Builder).';
 } else {
     $secrets = Read-Json 'secrets.json';
     if( $secrets ) {
         if( -not $secrets.adminPassword ) {
-            Add-Problem Error "secrets.json: 'adminPassword' is empty.";
+            Add-Problem Error "The Administrator password is empty (secrets.json: adminPassword).";
         }
         if( $settings -and $settings.wifi -and $settings.wifi.enabled -and -not $secrets.wifiPassword ) {
-            Add-Problem Error "secrets.json: 'wifiPassword' is empty but wifi is enabled in settings.json.";
+            Add-Problem Error "Wi-Fi is turned on but its password is empty (secrets.json: wifiPassword).";
         }
     }
 }
@@ -137,11 +143,11 @@ foreach( $file in $allFiles ) {
     $willRun = $inPhase -and -not $file.Name.StartsWith( '_' );
 
     if( $willRun -and $file.Extension -notin $runnable ) {
-        Add-Problem Error "${rel}: unsupported file type, it will be skipped at install. Prefix it with _ if another script uses it.";
+        Add-Problem Error "${rel}: this type of file cannot run, so setup skips it. If another script uses it, rename it to start with _.";
         continue;
     }
     if( $willRun -and $file.Name -notmatch '^\d+-' ) {
-        Add-Problem Warning "${rel}: no number prefix (e.g. 60-), so it runs after all numbered scripts.";
+        Add-Problem Warning "${rel}: the name does not start with a number like 60-, so it runs after all the numbered ones.";
     }
 
     if( $file.Extension -in '.ps1', '.reg' ) {
@@ -150,7 +156,7 @@ foreach( $file in $allFiles ) {
         $bytes = [System.IO.File]::ReadAllBytes( $file.FullName );
         $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF;
         if( -not $hasBom -and @( $bytes -gt 127 ).Count -gt 0 ) {
-            Add-Problem Error "${rel}: contains non-ASCII characters but has no UTF-8 BOM. Re-save it as 'UTF-8 with BOM'.";
+            Add-Problem Error "${rel}: contains special characters (such as an accent or a long dash) that Windows PowerShell will misread. Re-save the file as 'UTF-8 with BOM', or remove them.";
         }
     }
 
@@ -159,12 +165,12 @@ foreach( $file in $allFiles ) {
         $parseErrors = $null;
         $ast = [System.Management.Automation.Language.Parser]::ParseFile( $file.FullName, [ref] $tokens, [ref] $parseErrors );
         foreach( $parseError in $parseErrors ) {
-            Add-Problem Error "${rel}:$( $parseError.Extent.StartLineNumber ): $( $parseError.Message )";
+            Add-Problem Error "${rel} line $( $parseError.Extent.StartLineNumber ) has a mistake, so the script will not run: $( $parseError.Message )";
         }
         if( $willRun ) {
             $exits = $ast.FindAll( { param( $node ) $node -is [System.Management.Automation.Language.ExitStatementAst]; }, $true );
             foreach( $exit in $exits ) {
-                Add-Problem Error "${rel}:$( $exit.Extent.StartLineNumber ): 'exit' aborts the whole phase. Use 'return', or the wrapper pattern in Scripts/README.md.";
+                Add-Problem Error "${rel} line $( $exit.Extent.StartLineNumber ): 'exit' also stops every script after this one. Use 'return' instead (see Scripts/README.md).";
             }
         }
     }
@@ -173,15 +179,15 @@ foreach( $file in $allFiles ) {
         $lines = @( Get-Content -LiteralPath $file.FullName );
         $first = $lines | Where-Object -FilterScript { $_.Trim() } | Select-Object -First 1;
         if( $first -ne 'Windows Registry Editor Version 5.00' ) {
-            Add-Problem Error "${rel}: first line must be 'Windows Registry Editor Version 5.00'.";
+            Add-Problem Error "${rel}: a registry file must start with the line 'Windows Registry Editor Version 5.00'.";
         }
         $keys = $lines | Where-Object -FilterScript { $_ -match '^\[-?HKEY_' };
         foreach( $key in $keys ) {
             $isDefaultUser = $key -match '^\[-?HKEY_USERS\\DefaultUser\\';
             if( $phase -eq 'defaultuser' -and -not $isDefaultUser ) {
-                Add-Problem Error "${rel}: keys in defaultuser/ must start with HKEY_USERS\DefaultUser\ - found $key";
+                Add-Problem Error "${rel}: settings for new users must use keys starting with HKEY_USERS\DefaultUser\ (found $key).";
             } elseif( $phase -ne 'defaultuser' -and $isDefaultUser ) {
-                Add-Problem Error "${rel}: HKEY_USERS\DefaultUser only exists during the defaultuser phase - found $key";
+                Add-Problem Error "${rel}: HKEY_USERS\DefaultUser keys only work in the defaultuser folder (found $key).";
             }
         }
     }
@@ -203,13 +209,13 @@ foreach( $dir in Get-ChildItem -LiteralPath $driverRoot -Directory -ErrorAction 
             @();
         };
         if( $patterns.Count -eq 0 ) {
-            Add-Problem Error "${rel}: needs a match.txt with at least one model name, or it is never installed.";
+            Add-Problem Error "${rel}: no computer models are listed (match.txt), so these drivers are never installed.";
         }
     }
     $hasContent = [bool] ( Get-ChildItem -LiteralPath $dir.FullName -Recurse -File |
         Where-Object -FilterScript { $_.Name -notin 'match.txt', 'README.txt' } | Select-Object -First 1 );
     if( ( $hasContent -or $dir.Name -ne '_Common' ) -and -not $hasInf ) {
-        Add-Problem Warning "${rel}: no .inf files. Extract the driver pack (.exe/.cab/.zip) into this folder.";
+        Add-Problem Warning "${rel}: no drivers yet (no .inf files). Add the manufacturer's driver pack, extracted.";
     }
 }
 
@@ -218,10 +224,10 @@ foreach( $dir in Get-ChildItem -LiteralPath $driverRoot -Directory -ErrorAction 
 # --------------------------------------------------------------------------
 
 if( -not ( Test-Path -LiteralPath ( Join-Path -Path $KitRoot -ChildPath 'CustomAssets/admin.png' ) ) ) {
-    Add-Problem Warning 'CustomAssets/admin.png is missing; the Administrator keeps the default picture.';
+    Add-Problem Warning 'The Administrator account picture (CustomAssets/admin.png) is missing; it keeps the default picture.';
 }
 if( -not ( Test-Path -LiteralPath ( Join-Path -Path $scriptsRoot -ChildPath 'useronce/_WorldNationalParks.deskthemepack' ) ) ) {
-    Add-Problem Warning 'Scripts/useronce/_WorldNationalParks.deskthemepack is missing; machines will not be themed. See Scripts/README.md.';
+    Add-Problem Warning 'The desktop theme file (Scripts/useronce/_WorldNationalParks.deskthemepack) is missing, so computers will not be themed. Scripts/README.md says how to get it.';
 }
 
 # --------------------------------------------------------------------------

@@ -19,8 +19,14 @@ public interface IDialogService
 /// <summary>Hands files and folders to the operating system, and the clipboard.</summary>
 public interface IDesktopService
 {
-    /// <summary>Opens a file in its default app, or a folder in the file manager.</summary>
+    /// <summary>Opens a folder in the file manager.</summary>
     void Open(string path);
+
+    /// <summary>
+    /// Opens a text file for editing. Never the file's default action: on Windows that runs
+    /// .cmd/.bat files and merges .reg files into this PC's registry.
+    /// </summary>
+    void Edit(string path);
 
     /// <summary>Shows the file manager with <paramref name="path"/> selected.</summary>
     void Reveal(string path);

@@ -50,6 +50,14 @@ public sealed class DesktopService(TopLevel owner) : IDesktopService
 {
     public void Open(string path) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
 
+    public void Edit(string path)
+    {
+        if (OperatingSystem.IsWindows())
+            Process.Start(new ProcessStartInfo("notepad.exe") { ArgumentList = { path } });
+        else
+            Process.Start(new ProcessStartInfo("xdg-open") { ArgumentList = { path } });
+    }
+
     public void Reveal(string path)
     {
         if (OperatingSystem.IsWindows())

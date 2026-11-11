@@ -73,7 +73,7 @@ public class ScriptInventoryTests
 
         var e = Assert.Throws<InvalidOperationException>(() =>
             inventory.SwapOrder(list.Single(s => s.FileName == "unnumbered.ps1"), list[0]));
-        Assert.Contains("number prefix", e.Message);
+        Assert.Contains("start with a number", e.Message);
     }
 
     [Fact]
@@ -101,16 +101,67 @@ public class ScriptInventoryTests
     }
 
     [Fact]
-    public void New_reg_file_has_the_header_and_the_right_hive_for_the_phase()
+    public void New_powershell_script_has_the_header_the_app_reads()
+    {
+        using var kit = new TestKit();
+        var script = new ScriptInventory(kit.Kit).NewScript("firstlogon", NewScriptKind.PowerShell,
+            "Set the default printer!", "Makes the front-desk printer the default", "Without it, nobody can print.");
+
+        Assert.Equal("20-set-the-default-printer.ps1", script.FileName);
+        var header = ScriptHeader.Read(script.FullPath);
+        Assert.Equal("Makes the front-desk printer the default.", header.Description);
+        Assert.Equal("Without it, nobody can print.", header.Important);
+        var text = File.ReadAllText(script.FullPath);
+        Assert.Contains("never 'exit'", text);
+        Assert.DoesNotContain("\n", text.Replace("\r\n", ""));
+    }
+
+    [Fact]
+    public void New_registry_file_uses_the_right_hive_and_falls_back_to_the_name()
+    {
+        using var kit = new TestKit();
+        var reg = new ScriptInventory(kit.Kit).NewScript("defaultuser", NewScriptKind.Registry, "Hide the Copilot button");
+
+        Assert.Equal("20-hide-the-copilot-button.reg", reg.FileName);
+        var text = File.ReadAllText(reg.FullPath);
+        Assert.StartsWith("Windows Registry Editor Version 5.00\r\n\r\n; Hide the Copilot button.\r\n", text);
+        Assert.Contains(@"; [HKEY_USERS\DefaultUser\Software\Example]", text);
+        Assert.Null(ScriptHeader.Read(reg.FullPath).Important);
+    }
+
+    [Fact]
+    public void Non_ascii_text_gets_a_bom_in_powershell_but_never_in_command_files()
     {
         using var kit = new TestKit();
         var inventory = new ScriptInventory(kit.Kit);
 
-        var reg = inventory.NewRegFile("defaultuser", "Hide the Copilot button!");
+        var ps1 = inventory.NewScript("specialize", NewScriptKind.PowerShell, "Café printer");
+        var cmd = inventory.NewScript("specialize", NewScriptKind.Command, "Map drives", "Maps the S: drive — for staff");
 
-        Assert.Equal("20-hide-the-copilot-button.reg", reg.FileName);
-        var text = File.ReadAllText(reg.FullPath);
-        Assert.StartsWith("Windows Registry Editor Version 5.00\r\n", text);
-        Assert.Contains(@"HKEY_USERS\DefaultUser", text);
+        Assert.True(File.ReadAllBytes(ps1.FullPath).AsSpan().StartsWith("\uFEFF"u8));
+        Assert.False(File.ReadAllBytes(cmd.FullPath).AsSpan().StartsWith("\uFEFF"u8));
+        Assert.All(File.ReadAllBytes(cmd.FullPath), b => Assert.True(b < 128));
+    }
+
+    [Fact]
+    public void A_new_script_needs_a_name()
+    {
+        using var kit = new TestKit();
+        Assert.Throws<InvalidOperationException>(() =>
+            new ScriptInventory(kit.Kit).NewScript("specialize", NewScriptKind.PowerShell, "  !! "));
+    }
+
+    [PwshFact]
+    public async Task Every_template_passes_the_kits_own_check()
+    {
+        using var kit = new TestKit();
+        var inventory = new ScriptInventory(kit.Kit);
+        foreach (var phase in ScriptInventory.Phases)
+            foreach (var kind in Enum.GetValues<NewScriptKind>())
+                inventory.NewScript(phase, kind, $"Template {kind}", "Does a thing.", "Without it, a thing breaks.");
+
+        var result = await new KitBuilder.Core.Tools.KitTools(kit.Kit, new KitBuilder.Core.Tools.PowerShellRunner()).CheckAsync();
+
+        Assert.Empty(result.Errors);
     }
 }

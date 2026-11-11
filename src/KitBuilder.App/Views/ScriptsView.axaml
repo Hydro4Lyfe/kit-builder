@@ -3,42 +3,77 @@
              xmlns:vm="using:KitBuilder.App.ViewModels"
              x:Class="KitBuilder.App.Views.ScriptsView"
              x:DataType="vm:ScriptsViewModel">
-    <Grid ColumnDefinitions="200,*" Margin="0,8,0,0">
-        <!-- Phases, in the order the install runs them. -->
-        <StackPanel Spacing="6" Margin="4,4,10,0">
-            <TextBlock Text="PHASES, IN RUN ORDER" Classes="section" Margin="6,0"/>
+    <Grid ColumnDefinitions="230,*" Margin="0,8,0,0">
+        <!-- Install stages, in the order setup runs them. -->
+        <StackPanel Spacing="6" Margin="4,4,12,0">
+            <TextBlock Text="WHEN IT RUNS" Classes="section" Margin="6,0"/>
             <ListBox ItemsSource="{Binding Phases}" SelectedItem="{Binding SelectedPhase}">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:PhaseViewModel">
-                        <TextBlock Text="{Binding Name}"/>
+                        <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding DisplayName}"/>
+                            <TextBlock Text="{Binding FolderLabel}" Classes="hint" FontFamily="{DynamicResource PtMono}" FontSize="10.5"/>
+                        </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <Button Content="Reload" Classes="ghost" Command="{Binding RefreshCommand}" Margin="6,8,0,0"/>
+            <TextBlock Classes="hint" Margin="6,6,6,0"
+                       Text="Setup goes through these from top to bottom, and runs the items in each from top to bottom."/>
+            <Button Content="Reload" Classes="ghost" Command="{Binding RefreshCommand}" Margin="0,4,0,0"
+                    ToolTip.Tip="Read the folders again, e.g. after changing files in Explorer"/>
         </StackPanel>
 
         <DockPanel Grid.Column="1" DataContext="{Binding SelectedPhase}" x:DataType="vm:PhaseViewModel">
-            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,8,10">
+            <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,8,10">
                 <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Description}" Classes="hint" FontSize="12"/>
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding DisplayName}" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Description}" Classes="hint" FontSize="12" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Content="Show folder" Classes="ghost" VerticalAlignment="Top"
-                            Command="{Binding OpenFolderCommand}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
+                        <Button Content="+ New script" Classes="accent" Command="{Binding OpenNewScriptCommand}"
+                                IsVisible="{Binding !IsNewScriptOpen}"/>
+                        <Button Content="Add an existing file..." Command="{Binding AddFileCommand}"
+                                ToolTip.Tip="Copy in a script (.ps1), registry file (.reg), command file (.cmd) or program (.exe) you already have. It runs last."/>
+                        <Button Content="Show in folder" Classes="ghost" Command="{Binding OpenFolderCommand}"/>
+                    </StackPanel>
                 </Grid>
-                <TextBlock Classes="hint"
-                           Text="Scripts run top to bottom. Switching one off moves it into the phase's _disabled folder; switching it on moves it back."/>
-            </StackPanel>
 
-            <!-- Add bar -->
-            <Border DockPanel.Dock="Bottom" Classes="card" Margin="0,10,8,8" Padding="10">
-                <Grid ColumnDefinitions="Auto,16,*,8,Auto">
-                    <Button Content="Add file..." Command="{Binding AddFileCommand}"/>
-                    <TextBox Grid.Column="2" Text="{Binding NewRegName}" Watermark="Name for a new .reg file, e.g. Turn off Bing search"/>
-                    <Button Grid.Column="4" Content="New .reg file" Command="{Binding NewRegCommand}"/>
-                </Grid>
-            </Border>
+                <!-- New script panel -->
+                <Border Classes="card" IsVisible="{Binding IsNewScriptOpen}" Margin="0,6,0,0">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="NEW SCRIPT" Classes="section"/>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="What kind?" Classes="label"/>
+                            <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding NewKind}" Width="260">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:NewScriptKindOption">
+                                        <TextBlock Text="{Binding Label}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Text="{Binding NewKind.Hint}" Classes="hint"/>
+                        </StackPanel>
+                        <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto">
+                            <TextBlock Text="Name" Classes="label" Margin="0,4"/>
+                            <TextBox Grid.Column="1" Text="{Binding NewName}" Margin="0,4"
+                                     Watermark="Short name, e.g. Set the default printer"/>
+                            <TextBlock Grid.Row="1" Text="What it does" Classes="label" Margin="0,4"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding NewDescription}" Margin="0,4"
+                                     Watermark="One sentence, shown in this list, e.g. Makes the front-desk printer the default for everyone."/>
+                            <TextBlock Grid.Row="2" Text="If switched off" Classes="label" Margin="0,4"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding NewImportant}" Margin="0,4"
+                                     Watermark="Optional. What breaks without it, e.g. Without it, nobody can print. (Asks before switching off.)"/>
+                        </Grid>
+                        <TextBlock Classes="hint" TextWrapping="Wrap"
+                                   Text="Create makes the file with these details at the top and opens it in Notepad. Write the commands there and save; it runs last in this stage, and the arrows move it."/>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                            <Button Content="Cancel" Classes="ghost" Command="{Binding CloseNewScriptCommand}"/>
+                            <Button Content="Create and open in Notepad" Classes="accent" Command="{Binding CreateScriptCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
 
             <TextBlock DockPanel.Dock="Bottom" Classes="error" Margin="0,8,8,0"
                        Text="{Binding $parent[UserControl].((vm:ScriptsViewModel)DataContext).Error, FallbackValue=''}"/>
@@ -48,23 +83,32 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ScriptRowViewModel">
                             <Border Background="{DynamicResource PtCardBg}" BorderBrush="{DynamicResource PtCardBorder}"
-                                    BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,5">
-                                <Grid ColumnDefinitions="Auto,12,*,Auto">
+                                    BorderThickness="1" CornerRadius="6" Padding="12,9" Margin="0,0,0,6">
+                                <Grid ColumnDefinitions="Auto,14,*,Auto">
                                     <ToggleButton Theme="{StaticResource PtSwitch}" IsChecked="{Binding IsOn}"
-                                                  IsEnabled="{Binding CanToggle}" VerticalAlignment="Center"
-                                                  ToolTip.Tip="On: runs during setup. Off: kept in _disabled, skipped."/>
-                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding FileName}" FontFamily="{DynamicResource PtMono}" FontSize="12.5"/>
-                                        <TextBlock Text="{Binding StateLabel}" Classes="hint"
+                                                  IsVisible="{Binding CanToggle}" VerticalAlignment="Top" Margin="0,2,0,0"
+                                                  ToolTip.Tip="On: runs during setup. Off: skipped, but kept in the kit."/>
+                                    <StackPanel Grid.Column="2" Spacing="2">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"/>
+                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" FontSize="12"
+                                                   Foreground="{DynamicResource PtTextDim}"
+                                                   IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                        <TextBlock Text="{Binding StateLabel}" Classes="warning"
                                                    IsVisible="{Binding StateLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                        <TextBlock Classes="hint">
+                                            <Run Text="{Binding TypeLabel}"/>
+                                            <Run Text="  ·  "/>
+                                            <Run Text="{Binding FileName}" FontFamily="{DynamicResource PtMono}"/>
+                                        </TextBlock>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top">
                                         <Button Content="▲" Classes="ghost" Command="{Binding MoveUpCommand}"
                                                 IsVisible="{Binding CanMove}" ToolTip.Tip="Run earlier"/>
                                         <Button Content="▼" Classes="ghost" Command="{Binding MoveDownCommand}"
                                                 IsVisible="{Binding CanMove}" ToolTip.Tip="Run later"/>
-                                        <Button Content="Open" Classes="ghost" Command="{Binding OpenCommand}"/>
-                                        <Button Content="Show" Classes="ghost" Command="{Binding RevealCommand}"/>
+                                        <Button Content="Edit" Classes="ghost" Command="{Binding EditCommand}"
+                                                IsVisible="{Binding CanEdit}" ToolTip.Tip="Open the file in Notepad"/>
+                                        <Button Content="Show in folder" Classes="ghost" Command="{Binding RevealCommand}"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>

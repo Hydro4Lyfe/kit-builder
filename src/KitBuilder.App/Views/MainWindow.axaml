@@ -26,7 +26,7 @@
                 </StackPanel>
                 <Button Grid.Column="2" Content="Show in folder" Classes="ghost" Margin="0,0,6,0"
                         Command="{Binding OpenKitFolderCommand}" IsVisible="{Binding IsKitOpen}"/>
-                <Button Grid.Column="3" Content="Open kit..." Command="{Binding BrowseForKitCommand}"/>
+                <Button Grid.Column="3" Content="Open another kit..." Command="{Binding BrowseForKitCommand}"/>
             </Grid>
         </Border>
 
@@ -36,7 +36,7 @@
                         Spacing="12" MaxWidth="520">
                 <TextBlock Text="Open a deployment kit" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 <TextBlock Classes="hint" TextAlignment="Center" FontSize="12.5"
-                           Text="Choose the deployment-kit folder: the one with settings.json, Scripts and tools in it. PT Kit Builder edits the files in that folder; nothing is stored anywhere else."/>
+                           Text="The kit is the folder everything for installing Windows lives in: usually called deployment-kit, with settings.json, Scripts and tools inside. PT Kit Builder edits that folder and stores nothing anywhere else."/>
                 <Button Content="Open kit folder..." Classes="accent" HorizontalAlignment="Center"
                         Command="{Binding BrowseForKitCommand}"/>
                 <TextBlock Text="{Binding OpenError}" Classes="error" TextAlignment="Center"
@@ -51,8 +51,8 @@
                                 <StackPanel Spacing="8">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <StackPanel Spacing="2">
-                                            <TextBlock Text="KIT CHECK" Classes="section"/>
-                                            <TextBlock Classes="hint" Text="Runs tools\Test-Kit.ps1 after every change: the same check a build runs first."/>
+                                            <TextBlock Text="READY TO BUILD?" Classes="section"/>
+                                            <TextBlock Classes="hint" Text="Checked automatically after every change. Red items stop a build; amber ones are worth a look."/>
                                         </StackPanel>
                                         <Button Grid.Column="1" Content="Check again" VerticalAlignment="Top"
                                                 Command="{Binding RunCheckCommand}"/>
@@ -76,13 +76,13 @@
                             </Border>
                             <Border Classes="card">
                                 <StackPanel Spacing="6">
-                                    <TextBlock Text="WHERE THINGS ARE" Classes="section"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Settings: edition, time zone, Wi-Fi, passwords, apps removed from Windows, Start pins (settings.json and secrets.json)."/>
-                                    <TextBlock TextWrapping="Wrap" Text="Scripts: everything the install does, by phase. Switch scripts on or off, change their order, add new ones."/>
-                                    <TextBlock TextWrapping="Wrap" Text="Drivers: one folder per hardware model, matched by model name at install time."/>
-                                    <TextBlock TextWrapping="Wrap" Text="Build: put the kit on a USB stick (or an ISO for a VM)."/>
+                                    <TextBlock Text="WHAT EACH TAB IS FOR" Classes="section"/>
+                                    <TextBlock TextWrapping="Wrap" Text="Settings: Windows edition, time zone, the Administrator and Wi-Fi passwords, built-in apps to remove, Start menu pins."/>
+                                    <TextBlock TextWrapping="Wrap" Text="Scripts: everything setup does to each computer, grouped by when it happens. Switch items on or off, change their order, or add new ones."/>
+                                    <TextBlock TextWrapping="Wrap" Text="Drivers: drivers for each computer model. Each computer gets the ones for its own model."/>
+                                    <TextBlock TextWrapping="Wrap" Text="Build: put everything on a USB stick to install computers with (or an ISO file for a virtual machine)."/>
                                     <TextBlock Classes="hint" Margin="0,4,0,0"
-                                               Text="Apps installed with winget come from Scripts\firstlogon\_installers.ps1, which PT Script Builder generates."/>
+                                               Text="The list of apps installed on each computer comes from PT Script Builder: it writes Scripts\firstlogon\_installers.ps1."/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

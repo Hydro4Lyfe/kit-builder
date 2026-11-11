@@ -31,10 +31,12 @@ public sealed class DriverLibrary(KitFolder kit)
     public const string CommonFolderName = "_Common";
     public const string MatchFileName = "match.txt";
 
-    /// <summary>The command a technician runs on the target machine to find the names for match.txt.</summary>
+    /// <summary>
+    /// The command a technician runs on the target computer to find the names for match.txt.
+    /// It prints just those two names: the model, then (mainly for Lenovo) the friendly version name.
+    /// </summary>
     public const string ModelQueryCommand =
-        "Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer, Model; " +
-        "Get-CimInstance Win32_ComputerSystemProduct | Select-Object Version";
+        "(Get-CimInstance Win32_ComputerSystem).Model; (Get-CimInstance Win32_ComputerSystemProduct).Version";
 
     /// <summary>_Common first, then models by name, then $WinPEDriver$.</summary>
     public IReadOnlyList<DriverFolder> List()
@@ -57,20 +59,20 @@ public sealed class DriverLibrary(KitFolder kit)
     {
         name = name.Trim();
         if (name.Length == 0)
-            throw new InvalidOperationException("Give the model folder a name, e.g. Dell Latitude 5450.");
+            throw new InvalidOperationException("Give the model a name, e.g. Dell Latitude 5450.");
         // Windows' rules, checked explicitly: on Linux GetInvalidFileNameChars only lists / and NUL.
         if (name.IndexOfAny(['\\', '/', ':', '*', '?', '"', '<', '>', '|', '\0']) >= 0)
-            throw new InvalidOperationException($"\"{name}\" cannot be a folder name. Avoid \\ / : * ? \" < > |.");
+            throw new InvalidOperationException($"\"{name}\" cannot be used as a name. Leave out \\ / : * ? \" < > |.");
         if (name.StartsWith('_'))
-            throw new InvalidOperationException("Model folder names cannot start with _.");
+            throw new InvalidOperationException("Model names cannot start with _.");
 
         var dir = Path.Combine(kit.DriversRoot, name);
         if (Directory.Exists(dir))
-            throw new InvalidOperationException($"Drivers\\{name} already exists.");
+            throw new InvalidOperationException($"There is already a model called {name}.");
 
         var lines = CleanLines(matchLines);
         if (lines.Count == 0)
-            throw new InvalidOperationException("Add at least one model name for match.txt, or the folder is never installed.");
+            throw new InvalidOperationException("List at least one computer model, or these drivers are never installed.");
 
         Directory.CreateDirectory(dir);
         WriteMatchLines(dir, lines);
@@ -83,7 +85,7 @@ public sealed class DriverLibrary(KitFolder kit)
             throw new InvalidOperationException("Only model folders have a match.txt.");
         var lines = CleanLines(matchLines);
         if (lines.Count == 0)
-            throw new InvalidOperationException("match.txt needs at least one model name.");
+            throw new InvalidOperationException("List at least one computer model, or these drivers are never installed.");
         WriteMatchLines(model.FullPath, lines);
         return Describe(model.FullPath, model.Kind);
     }
@@ -91,7 +93,7 @@ public sealed class DriverLibrary(KitFolder kit)
     public void RemoveModel(DriverFolder model)
     {
         if (model.Kind != DriverFolderKind.Model)
-            throw new InvalidOperationException($"{model.Name} cannot be removed.");
+            throw new InvalidOperationException($"{model.Name} cannot be deleted.");
         Directory.Delete(model.FullPath, recursive: true);
     }
 
@@ -105,7 +107,7 @@ public sealed class DriverLibrary(KitFolder kit)
         var name = Path.GetFileNameWithoutExtension(source.TrimEnd('\\', '/'));
         var destination = Path.Combine(target.FullPath, name);
         if (Directory.Exists(destination))
-            throw new InvalidOperationException($"{target.Name} already has a folder named {name}. Remove it first.");
+            throw new InvalidOperationException($"{target.Name} already has drivers called {name}. Delete that folder first (Show in folder).");
 
         if (Directory.Exists(source))
         {
@@ -126,15 +128,15 @@ public sealed class DriverLibrary(KitFolder kit)
                         "Driver installers (.exe) must be extracted first. Dell packs: run the .exe and choose " +
                         "Extract. Lenovo/HP packs: run the .exe, which asks for a folder to extract to. Then import that folder.");
                 default:
-                    throw new InvalidOperationException("Import a folder, a .zip or a .cab.");
+                    throw new InvalidOperationException("Choose a folder, a .zip or a .cab file.");
             }
         }
 
         // The files stay: the technician may still need to extract an inner archive.
         if (CountInfs(destination) == 0)
             throw new InvalidOperationException(
-                $"Imported {name}, but it contains no .inf files, so pnputil will find nothing to install. " +
-                "It may need extracting further.");
+                $"Added {name}, but it contains no drivers (.inf files), so nothing would be installed. " +
+                "It probably needs extracting first.");
         return Describe(target.FullPath, target.Kind);
     }
 

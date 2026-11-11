@@ -33,6 +33,15 @@
         <SolidColorBrush x:Key="PtRed" Color="#d97066"/>
         <SolidColorBrush x:Key="PtRedHoverBg" Color="#2b2226"/>
         <SolidColorBrush x:Key="PtSwitchOff" Color="#3a4150"/>
+        <!-- Fluent's Expander is black by default; make it read as one of the cards. -->
+        <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#1b1e25"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#20242e"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#2a2f3c"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="#262b34"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="#2f3440"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="#2f3440"/>
+        <SolidColorBrush x:Key="ExpanderContentBackground" Color="#1b1e25"/>
+        <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#262b34"/>
         <FontFamily x:Key="PtMono">Cascadia Code,Consolas,Menlo,monospace</FontFamily>
 
         <!-- Small iOS-style switch (30x17, 13px knob), as in PT Script Builder. -->
