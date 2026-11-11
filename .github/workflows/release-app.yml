@@ -1,0 +1,84 @@
+name: Release App
+
+# Runs on every push to main; only proceeds when <Version> in
+# Directory.Build.props has no v{VERSION} tag on the remote yet.
+# To ship a release: bump <Version>, commit, push. That's it.
+#
+# Same gate as PT Script Builder's release, minus the update-feed deploy:
+# PT Kit Builder has no updater, so the GitHub Release is the only download.
+# The tag is created last, so a failed run leaves no tag and the next push
+# (or a manual re-run) retries.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # create the tag + GitHub Release
+
+# One release at a time. A queued second run re-checks the gate, sees the
+# fresh tag, and skips.
+concurrency:
+  group: release-app
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Version gate — release only if v{VERSION} has no tag yet
+        id: gate
+        run: |
+          VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "v$VERSION is already tagged — nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "v$VERSION has no tag — releasing."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.gate.outputs.release == 'true'
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        if: steps.gate.outputs.release == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Test
+        if: steps.gate.outputs.release == 'true'
+        run: dotnet test KitBuilder.sln -c Release
+
+      - name: Publish Windows app
+        if: steps.gate.outputs.release == 'true'
+        run: |
+          bash build/publish-win.sh
+          # The gate read the version with sed; the exe is stamped by msbuild.
+          # They must agree, or something is off with the version plumbing.
+          BUILD_VERSION=$(dotnet msbuild src/KitBuilder.App/KitBuilder.App.csproj -getProperty:Version)
+          if [ "$BUILD_VERSION" != "${{ steps.gate.outputs.version }}" ]; then
+            echo "Version mismatch: msbuild=$BUILD_VERSION gate=${{ steps.gate.outputs.version }}"
+            exit 1
+          fi
+
+      - name: Create tag + GitHub Release
+        if: steps.gate.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.gate.outputs.version }}"
+          gh release create "v$VERSION" \
+            "build/publish-win/PT Kit Builder.exe" \
+            --target "$GITHUB_SHA" \
+            --title "PT Kit Builder v$VERSION" \
+            --generate-notes

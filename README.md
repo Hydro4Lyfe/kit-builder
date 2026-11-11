@@ -29,6 +29,15 @@ So the kit still works without the app, anything the app does can be done by han
 checking/building has exactly one implementation (the kit's PowerShell tools). On Windows
 the tools run in Windows PowerShell 5.1, the same as a technician running them by hand.
 
+## Installation
+
+Grab `PT Kit Builder.exe` from the latest [GitHub Release](../../releases/latest) and run
+it. It is fully self-contained (no .NET runtime needed). There is no auto-update: to
+update, download the newer exe and replace the old one.
+
+Requirements: Windows 10/11 x64 (also runs on Windows on ARM through emulation). The
+`.exe` is **unsigned**, so SmartScreen/Defender may warn on first run.
+
 ## Using it
 
 Run `PT Kit Builder.exe` and open the `deployment-kit` folder. The app finds the kit on
@@ -48,6 +57,15 @@ Tests that run the real kit tools need `pwsh` on PATH (and `xorriso` for the ISO
 they are skipped when it is missing.
 
 Version: `<Version>` in `Directory.Build.props`.
+
+### CI and releases
+
+Two GitHub Actions workflows ([`.github/workflows/`](.github/workflows)):
+
+- **`ci.yml`**: on every push/PR to `main`, restore, build and run the full test suite on Linux.
+- **`release-app.yml`**: runs on pushes to `main`. When `<Version>` in [`Directory.Build.props`](Directory.Build.props) has no `v{VERSION}` tag yet, it runs the tests, publishes the Windows `.exe` and creates the tag and GitHub Release with the exe attached.
+
+To ship a release: bump `<Version>`, commit, push.
 
 ### Layout
 
